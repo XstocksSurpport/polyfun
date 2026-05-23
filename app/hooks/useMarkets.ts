@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { Market } from "@/lib/types";
+import { calcYesEthProgressBps } from "@/lib/protocol";
 
 function parseMarket(raw: Record<string, unknown>): Market {
   return {
@@ -39,7 +40,13 @@ export function useMarket(address: string) {
       return { market: parseMarket(data.market), error: undefined };
     },
     enabled: Boolean(address),
-    refetchInterval: 30_000,
+    refetchInterval: (query) => {
+      const market = query.state.data?.market;
+      if (!market || market.status !== "active") return 30_000;
+      const ethProgress = calcYesEthProgressBps(market.yesValueWei);
+      if (ethProgress >= 8500 || market.yesRatioBps >= 8500) return 5_000;
+      return 30_000;
+    },
   });
 }
 

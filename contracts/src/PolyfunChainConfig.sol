@@ -16,7 +16,7 @@ library PolyfunChainConfig {
             return DexAddresses({
                 weth: 0x4200000000000000000000000000000000000006,
                 v3Factory: 0x33128a8fC17869897dcE68Ed026d694621f6FDfD,
-                v3Nfpm: 0x03A520B32C04bF3bEE4386502744716d2F6b9D3e
+                v3Nfpm: 0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1
             });
         }
         if (chainId == 84532) {

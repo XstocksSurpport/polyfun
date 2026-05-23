@@ -11,7 +11,7 @@ export const launchProtection = {
 export const dexAddresses = {
   mainnet: {
     uniswapV3Factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD" as const,
-    uniswapNFPM: "0x03a520b32C04BF3bEE4386502744716D2f6b9D3e" as const,
+    uniswapNFPM: "0x03A520B32C04BF3bEEf7BEb72E919cf822Ed34f1" as const,
     aerodromeRouter: "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874e43" as const,
     aerodromeVoter: "0x16613524e02ad97eDfeF371bC883F744f419e5BB" as const,
     slipstreamPoolFactory: "0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A" as const,

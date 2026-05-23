@@ -20,7 +20,7 @@ library PolyfunConstants {
 
     address internal constant WETH = 0x4200000000000000000000000000000000000006;
     address internal constant V3_FACTORY = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
-    address internal constant V3_NFPM = 0x03A520B32C04bF3bEE4386502744716d2F6b9D3e;
+    address internal constant V3_NFPM = 0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1;
     address internal constant DEAD = 0x000000000000000000000000000000000000dEaD;
 
     uint24 internal constant V3_FEE_TIER = 10000;

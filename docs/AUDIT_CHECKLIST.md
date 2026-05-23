@@ -15,7 +15,7 @@ Last updated: 2026-05-23
 |----------|---------|
 | WETH | `0x4200000000000000000000000000000000000006` |
 | Uniswap V3 Factory | `0x33128a8fC17869897dcE68Ed026d694621f6FDfD` |
-| NFPM | `0x03A520B32C04bF3bEE4386502744716d2F6b9D3e` |
+| NFPM | `0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1` |
 
 Deploy script reads `PolyfunChainConfig.getDex(chainId)` — **not** hardcoded runtime adapter from `PolyfunConstants.V3_*`.
 

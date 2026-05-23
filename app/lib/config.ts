@@ -1,4 +1,4 @@
-export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "8453");
+export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "84532");
 
 export const EXPLORER_URL =
   CHAIN_ID === 8453 ? "https://basescan.org" : "https://sepolia.basescan.org";

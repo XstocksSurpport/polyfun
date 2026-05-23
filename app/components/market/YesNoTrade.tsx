@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { parseEther } from "ethers";
 import type { Market } from "@/lib/types";
 import { formatEth } from "@/lib/utils";
 import { ethToWei } from "@/lib/market-utils";
 import { EXPLORER_URL } from "@/lib/config";
-import { MIGRATION } from "@/lib/protocol";
+import { MIGRATION, calcYesEthProgressBps } from "@/lib/protocol";
 import { marketAbi } from "@/lib/abis";
 import { getContract } from "@/lib/ethers/contract";
 import { useWallet } from "@/providers/WalletProvider";
@@ -29,6 +28,10 @@ export function YesNoTrade({ market }: YesNoTradeProps) {
   const willTrigger = quote?.[2] === true;
 
   const amountWei = ethToWei(amount);
+  const ethProgressBps = calcYesEthProgressBps(market.yesValueWei);
+  const atMigrationGate =
+    ethProgressBps >= MIGRATION.thresholdBps && market.yesRatioBps >= MIGRATION.thresholdBps;
+  const inMigrationZone = ethProgressBps >= 8500 || market.yesRatioBps >= 8500;
 
   const loadQuote = useCallback(async () => {
     if (!signer || amountWei === 0n || market.status !== "active") {
@@ -87,7 +90,7 @@ export function YesNoTrade({ market }: YesNoTradeProps) {
   }
 
   if (market.status !== "active") {
-    return <div className="py-8 text-center text-sm text-zinc-400">{market.status}</div>;
+    return <div className="py-8 text-center text-sm text-neutral-400">{market.status}</div>;
   }
 
   if (!address) {
@@ -98,15 +101,27 @@ export function YesNoTrade({ market }: YesNoTradeProps) {
     );
   }
 
+  const tradeDisabled =
+    pending || amountWei === 0n || (atMigrationGate && side === "no" && !willTrigger);
+
   return (
     <div className="space-y-4">
+      {inMigrationZone && (
+        <p className="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
+          {atMigrationGate
+            ? "Migration threshold reached — next YES buy launches Uniswap pool."
+            : "Near migration — pool may graduate to Uniswap soon."}
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         {(["yes", "no"] as const).map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => setSide(s)}
-            className={`rounded-xl border p-4 text-left text-sm font-medium transition-all cursor-pointer ${
+            disabled={pending}
+            className={`rounded-xl border p-4 text-left text-sm font-medium transition-all cursor-pointer disabled:opacity-50 ${
               side === s
                 ? s === "yes"
                   ? "border-yes bg-yes-muted text-yes"
@@ -125,7 +140,8 @@ export function YesNoTrade({ market }: YesNoTradeProps) {
             key={v}
             type="button"
             onClick={() => setAmount(v)}
-            className={`flex-1 cursor-pointer rounded-lg border py-2 text-sm tabular-nums ${
+            disabled={pending}
+            className={`flex-1 cursor-pointer rounded-lg border py-2 text-sm tabular-nums disabled:opacity-50 ${
               amount === v
                 ? "border-neutral-900 bg-neutral-900 text-white"
                 : "border-neutral-100 text-neutral-600"
@@ -141,8 +157,9 @@ export function YesNoTrade({ market }: YesNoTradeProps) {
         step="0.001"
         min="0"
         value={amount}
+        disabled={pending}
         onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-        className="w-full rounded-lg border border-neutral-100 px-3 py-2.5 text-sm tabular-nums outline-none focus:border-neutral-300"
+        className="w-full rounded-lg border border-neutral-100 px-3 py-2.5 text-sm tabular-nums outline-none focus:border-neutral-300 disabled:opacity-50"
       />
 
       {txError && <p className="text-xs text-no">{txError}</p>}
@@ -161,14 +178,16 @@ export function YesNoTrade({ market }: YesNoTradeProps) {
         variant={side === "yes" ? "yes" : "no"}
         size="lg"
         className="w-full"
-        disabled={pending || amountWei === 0n}
+        disabled={tradeDisabled}
         onClick={handleTrade}
       >
         {pending
-          ? "..."
+          ? "Migrating to Uniswap..."
           : willTrigger && side === "yes"
             ? `MIGRATE · ${formatEth(amount)}`
-            : `${side.toUpperCase()} · ${formatEth(amount)}`}
+            : atMigrationGate && side === "no"
+              ? "Pool migrating — NO closed"
+              : `${side.toUpperCase()} · ${formatEth(amount)}`}
       </Button>
     </div>
   );
