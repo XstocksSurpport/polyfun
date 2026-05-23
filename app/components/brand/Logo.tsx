@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "./LogoMark";
 
@@ -55,9 +54,12 @@ export function Logo({
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 rounded-lg">
+      <a
+        href={href}
+        className="inline-flex rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
+      >
         {content}
-      </Link>
+      </a>
     );
   }
 

@@ -6,7 +6,7 @@ import { useMarkets } from "@/hooks/useMarkets";
 import { truncateAddress } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { PpppBadge } from "@/components/ui/PpppBadge";
-import { LoadingBlock, EmptyBlock, ErrorBlock } from "@/components/ui/State";
+import { LoadingBlock, EmptyBlock, SetupBlock } from "@/components/ui/State";
 import { useEffect, useState } from "react";
 
 interface SharePosition {
@@ -67,7 +67,17 @@ export default function PortfolioPage() {
     };
   }, [address, marketsData?.markets]);
 
-  if (!address) return <EmptyBlock />;
+  if (!address) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+        <h1 className="text-2xl font-semibold text-neutral-900">Portfolio</h1>
+        <p className="mt-6 text-sm text-neutral-500">
+          Use <strong className="font-medium text-neutral-800">Connect wallet</strong> in the top-right
+          corner to view your positions.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
@@ -82,9 +92,7 @@ export default function PortfolioPage() {
       </div>
 
       {(isLoading || loadingShares) && <LoadingBlock />}
-      {marketsData?.error && !marketsData.configured && (
-        <ErrorBlock code={marketsData.error} />
-      )}
+      {marketsData && !marketsData.configured && <SetupBlock />}
 
       <div className="mt-6 divide-y divide-neutral-100 rounded-xl border border-neutral-100">
         {positions.map((pos) => (

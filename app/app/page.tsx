@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useMarkets } from "@/hooks/useMarkets";
 import { MarketCard } from "@/components/market/MarketCard";
-import { LinkButton } from "@/components/ui/Button";
-import { EmptyBlock, LoadingBlock, ErrorBlock } from "@/components/ui/State";
+import { EmptyBlock, LoadingBlock, ErrorBlock, SetupBlock } from "@/components/ui/State";
 import type { MarketStatus } from "@/lib/types";
 
 type Filter = "all" | MarketStatus;
@@ -37,21 +36,24 @@ export default function HomePage() {
             Live predictions
           </h1>
         </div>
-        <LinkButton href="/launch" size="md">
+        <a
+          href="/launch"
+          className="inline-flex min-h-11 items-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-800 active:bg-neutral-700"
+        >
           Launch
-        </LinkButton>
+        </a>
       </section>
 
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-neutral-100 pb-px">
+      <div className="mb-6 flex flex-wrap gap-2 border-b border-neutral-100 pb-3">
         {filters.map((f) => (
           <button
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`shrink-0 cursor-pointer px-4 py-2 text-sm transition-colors ${
+            className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-sm transition-colors ${
               filter === f.id
-                ? "border-b-2 border-neutral-900 text-neutral-900 -mb-px"
-                : "text-neutral-400 hover:text-neutral-600"
+                ? "bg-neutral-900 text-white"
+                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
             }`}
           >
             {f.label}
@@ -61,7 +63,7 @@ export default function HomePage() {
 
       {isLoading && <LoadingBlock />}
       {error && <ErrorBlock code={error.message} />}
-      {!isLoading && data?.error && !data.configured && <ErrorBlock code={data.error} />}
+      {!isLoading && !error && !data?.configured && <SetupBlock />}
       {!isLoading && data?.configured && markets.length === 0 && <EmptyBlock />}
 
       {!isLoading && markets.length > 0 && (

@@ -6,11 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { BrowserProvider, JsonRpcSigner } from "ethers";
-import EthereumProvider from "@walletconnect/ethereum-provider";
 import { CHAIN_ID, rpcUrl, walletConnectProjectId, chainParams } from "@/lib/config";
 
 export interface Eip6963ProviderDetail {
@@ -28,7 +28,7 @@ interface WalletContextValue {
   chainId: number | null;
   signer: JsonRpcSigner | null;
   connecting: boolean;
-  providers: Eip6963ProviderDetail[];
+  getProviders: () => Eip6963ProviderDetail[];
   connectInjected: (detail: Eip6963ProviderDetail) => Promise<void>;
   connectWalletConnect: () => Promise<void>;
   disconnect: () => Promise<void>;
@@ -70,8 +70,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [chainId, setChainId] = useState<number | null>(null);
   const [signer, setSigner] = useState<JsonRpcSigner | null>(null);
   const [connecting, setConnecting] = useState(false);
-  const [providers, setProviders] = useState<Eip6963ProviderDetail[]>([]);
-  const [wcProvider, setWcProvider] = useState<EthereumProvider | null>(null);
+  const providersRef = useRef<Eip6963ProviderDetail[]>([]);
+  const wcProviderRef = useRef<{ disconnect: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -83,7 +83,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (!discovered.has(key)) discovered.set(key, detail);
     };
 
-    const sync = () => setProviders(Array.from(discovered.values()));
+    const sync = () => {
+      providersRef.current = Array.from(discovered.values());
+    };
 
     const onAnnounce = (event: Event) => {
       push((event as CustomEvent<Eip6963ProviderDetail>).detail);
@@ -113,6 +115,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const getProviders = useCallback(() => providersRef.current, []);
+
   const connectInjected = useCallback(async (detail: Eip6963ProviderDetail) => {
     setConnecting(true);
     try {
@@ -129,6 +133,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!walletConnectProjectId) return;
     setConnecting(true);
     try {
+      const { default: EthereumProvider } = await import("@walletconnect/ethereum-provider");
       const provider = await EthereumProvider.init({
         projectId: walletConnectProjectId,
         chains: [CHAIN_ID],
@@ -137,7 +142,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         rpcMap: { [CHAIN_ID]: rpcUrl },
       });
       await provider.enable();
-      setWcProvider(provider);
+      wcProviderRef.current = provider;
       const bound = await bindProvider(provider as unknown as Eip1193Provider);
       setSigner(bound.signer);
       setAddress(bound.address);
@@ -148,14 +153,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const disconnect = useCallback(async () => {
-    if (wcProvider) {
-      await wcProvider.disconnect();
-      setWcProvider(null);
+    if (wcProviderRef.current) {
+      await wcProviderRef.current.disconnect();
+      wcProviderRef.current = null;
     }
     setSigner(null);
     setAddress(null);
     setChainId(null);
-  }, [wcProvider]);
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -163,21 +168,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       chainId,
       signer,
       connecting,
-      providers,
+      getProviders,
       connectInjected,
       connectWalletConnect,
       disconnect,
     }),
-    [
-      address,
-      chainId,
-      signer,
-      connecting,
-      providers,
-      connectInjected,
-      connectWalletConnect,
-      disconnect,
-    ]
+    [address, chainId, signer, connecting, getProviders, connectInjected, connectWalletConnect, disconnect]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

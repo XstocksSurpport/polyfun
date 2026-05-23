@@ -11,7 +11,7 @@ import { FEES, MIGRATION } from "@/lib/protocol";
 import { formatEth } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { PpppBadge } from "@/components/ui/PpppBadge";
-import { ErrorBlock } from "@/components/ui/State";
+import { SetupBlock } from "@/components/ui/State";
 
 export function LaunchForm() {
   const router = useRouter();
@@ -124,7 +124,7 @@ export function LaunchForm() {
   if (configError) {
     return (
       <div className="mx-auto max-w-lg py-8">
-        <ErrorBlock code={configError} />
+        <SetupBlock />
       </div>
     );
   }

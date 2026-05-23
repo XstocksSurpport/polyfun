@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { Header } from "@/components/layout/Header";
+import { Chrome } from "@/components/layout/Chrome";
 import { Footer } from "@/components/layout/Footer";
 import { AppProviders } from "@/providers/AppProviders";
 import "./globals.css";
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${jakarta.variable} min-h-screen flex flex-col font-sans`}>
         <AppProviders>
-          <Header />
+          <Chrome />
           <main className="flex-1">{children}</main>
           <Footer />
         </AppProviders>

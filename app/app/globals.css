@@ -21,6 +21,18 @@
     @apply bg-white text-neutral-900 font-sans;
   }
 
+  button,
+  a[href],
+  [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled),
+  a[href] {
+    cursor: pointer;
+  }
+
   ::selection {
     @apply bg-neutral-900 text-white;
   }

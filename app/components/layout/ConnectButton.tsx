@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useWallet } from "@/providers/WalletProvider";
+import { useWallet, type Eip6963ProviderDetail } from "@/providers/WalletProvider";
 import { walletConnectProjectId } from "@/lib/config";
 import { truncateAddress } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
 
 const WALLET_ORDER = [
   "io.metamask",
@@ -36,18 +35,19 @@ function WalletModal({
   open: boolean;
   onClose: () => void;
   connecting: boolean;
-  providers: ReturnType<typeof useWallet>["providers"];
-  connectInjected: ReturnType<typeof useWallet>["connectInjected"];
-  connectWalletConnect: ReturnType<typeof useWallet>["connectWalletConnect"];
+  providers: Eip6963ProviderDetail[];
+  connectInjected: (detail: Eip6963ProviderDetail) => Promise<void>;
+  connectWalletConnect: () => Promise<void>;
 }) {
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      document.body.style.overflow = "";
+      return;
+    }
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
@@ -66,35 +66,33 @@ function WalletModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-neutral-900/40 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Wallet"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="absolute inset-0 bg-neutral-900/30 backdrop-blur-[2px]"
-        aria-hidden
-      />
-      <div className="relative z-10 flex max-h-[min(520px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-2xl shadow-neutral-900/10">
-        <div className="flex shrink-0 items-center justify-between border-b border-neutral-100 px-5 py-4">
-          <span className="text-sm font-semibold text-neutral-900">Connect</span>
+        className="flex max-h-[min(520px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+          <span className="text-sm font-semibold">Connect</span>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-xl text-neutral-400 hover:bg-neutral-100"
             aria-label="Close"
           >
             ×
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+        <div className="overflow-y-auto px-3 py-3">
           {wallets.length === 0 && !walletConnectProjectId ? (
             <p className="px-3 py-6 text-center text-sm text-neutral-500">
-              Install MetaMask or another wallet extension, then refresh.
+              Install MetaMask, then refresh.
             </p>
           ) : null}
           <ul className="space-y-1">
@@ -107,27 +105,21 @@ function WalletModal({
                     await connectInjected(p);
                     onClose();
                   }}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-neutral-50 disabled:opacity-40"
                 >
                   {p.info.icon ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.info.icon}
-                      alt=""
-                      className="h-9 w-9 shrink-0 rounded-lg border border-neutral-100 bg-white object-contain p-0.5"
-                    />
+                    <img src={p.info.icon} alt="" className="h-9 w-9 rounded-lg border object-contain" />
                   ) : (
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-100 bg-neutral-50 text-xs font-medium text-neutral-500">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-xs">
                       W
                     </span>
                   )}
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-900">
-                    {p.info.name}
-                  </span>
+                  <span className="text-sm font-medium">{p.info.name}</span>
                 </button>
               </li>
             ))}
-            {walletConnectProjectId && (
+            {walletConnectProjectId ? (
               <li>
                 <button
                   type="button"
@@ -136,15 +128,15 @@ function WalletModal({
                     await connectWalletConnect();
                     onClose();
                   }}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-neutral-50 disabled:opacity-40"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-100 bg-neutral-50 text-[10px] font-semibold text-neutral-600">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-xs font-semibold">
                     WC
                   </span>
-                  <span className="text-sm font-medium text-neutral-900">WalletConnect</span>
+                  <span className="text-sm font-medium">WalletConnect</span>
                 </button>
               </li>
-            )}
+            ) : null}
           </ul>
         </div>
       </div>
@@ -153,38 +145,45 @@ function WalletModal({
   );
 }
 
-export function ConnectButton() {
-  const {
-    address,
-    connecting,
-    providers,
-    connectInjected,
-    connectWalletConnect,
-    disconnect,
-  } = useWallet();
+function ConnectButtonInner() {
+  const { address, connecting, getProviders, connectInjected, connectWalletConnect, disconnect } =
+    useWallet();
   const [open, setOpen] = useState(false);
+
+  const close = useCallback(() => setOpen(false), []);
 
   if (address) {
     return (
-      <Button variant="secondary" size="sm" onClick={() => disconnect()}>
+      <button
+        type="button"
+        onClick={() => disconnect()}
+        className="inline-flex h-8 items-center rounded-md border border-neutral-200 bg-white px-3 text-sm font-medium hover:bg-neutral-50"
+      >
         {truncateAddress(address)}
-      </Button>
+      </button>
     );
   }
 
   return (
     <>
-      <Button variant="primary" size="sm" onClick={() => setOpen(true)} disabled={connecting}>
-        {connecting ? "..." : "Connect"}
-      </Button>
+      <button
+        type="button"
+        disabled={connecting}
+        onClick={() => setOpen(true)}
+        className="inline-flex h-10 min-w-[7.5rem] items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-neutral-800 disabled:opacity-40"
+      >
+        {connecting ? "..." : "Connect wallet"}
+      </button>
       <WalletModal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         connecting={connecting}
-        providers={providers}
+        providers={open ? getProviders() : []}
         connectInjected={connectInjected}
         connectWalletConnect={connectWalletConnect}
       />
     </>
   );
 }
+
+export const ConnectButton = memo(ConnectButtonInner);

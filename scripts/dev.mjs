@@ -1,4 +1,5 @@
 import { execSync, spawn } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -26,6 +27,32 @@ function killPortWindows(p) {
 }
 
 killPortWindows(port);
+
+function removeNextDir(dir) {
+  if (!existsSync(dir)) return;
+  console.log("Removing stale .next cache…");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+      return;
+    } catch (err) {
+      if (attempt === 4) throw err;
+      try {
+        execSync(`powershell -NoProfile -Command "Remove-Item -LiteralPath '${dir.replace(/'/g, "''")}' -Recurse -Force -ErrorAction Stop"`, {
+          stdio: "ignore",
+        });
+        return;
+      } catch {
+        // locked by a running Next process — retry after killPort
+      }
+    }
+  }
+}
+
+const nextDir = path.join(appDir, ".next");
+if (process.argv.includes("--clean")) {
+  removeNextDir(nextDir);
+}
 
 console.log(`Starting dev server at http://localhost:${port}`);
 

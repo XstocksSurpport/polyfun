@@ -24,7 +24,7 @@ export function useMarkets() {
         configured: res.status !== 503,
       };
     },
-    refetchInterval: 15_000,
+    refetchInterval: (query) => (query.state.data?.configured ? 60_000 : false),
   });
 }
 
@@ -39,7 +39,7 @@ export function useMarket(address: string) {
       return { market: parseMarket(data.market), error: undefined };
     },
     enabled: Boolean(address),
-    refetchInterval: 10_000,
+    refetchInterval: 30_000,
   });
 }
 
@@ -61,6 +61,6 @@ export function useMarketTrades(address: string) {
       };
     },
     enabled: Boolean(address),
-    refetchInterval: 15_000,
+    refetchInterval: 30_000,
   });
 }
