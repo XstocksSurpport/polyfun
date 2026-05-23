@@ -1,0 +1,18 @@
+{
+  "8453": {
+    "name": "Base Mainnet",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "uniswapV3": {
+      "factory": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+      "nfpm": "0x03A520B32C04bF3bEE4386502744716d2F6b9D3e"
+    }
+  },
+  "84532": {
+    "name": "Base Sepolia",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "uniswapV3": {
+      "factory": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+      "nfpm": "0x27F971cb582BF9E50F397e4d29a5C7A34f11faA2"
+    }
+  }
+}

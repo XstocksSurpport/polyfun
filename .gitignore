@@ -1,0 +1,25 @@
+# Env & secrets
+.env
+.env.local
+contracts/.env
+vanity/.env
+
+# Deploy artifacts (keep examples)
+deployments/base-sepolia.json
+deployments/base-mainnet.json
+deployments/latest.json
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Node
+node_modules/
+app/node_modules/
+vanity/node_modules/
+app/.next/
+
+# OS
+.DS_Store
+Thumbs.db

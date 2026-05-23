@@ -1,0 +1,12 @@
+{
+  "name": "polyfun-vanity",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "grind": "node grind-cli.mjs"
+  },
+  "dependencies": {
+    "viem": "^2.30.0"
+  }
+}
