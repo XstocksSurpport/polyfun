@@ -16,6 +16,7 @@ interface IUniswapV3PoolInitialize {
 
 interface PolyfunTokenLike {
     function approve(address spender, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
 }
 
 contract UniswapV3Adapter is IMigrationAdapter {
@@ -51,6 +52,11 @@ contract UniswapV3Adapter is IMigrationAdapter {
             uint160 sqrtPriceX96 = _encodePriceSqrt(amount1, amount0);
             IUniswapV3PoolInitialize(pool).initialize(sqrtPriceX96);
         }
+
+        require(
+            PolyfunTokenLike(token).balanceOf(address(this)) >= tokenAmount,
+            "AdapterTokenBalance"
+        );
 
         PolyfunTokenLike(token).approve(address(nfpm), tokenAmount);
         weth.approve(address(nfpm), ethAmount);

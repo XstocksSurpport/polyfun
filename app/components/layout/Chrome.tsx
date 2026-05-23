@@ -1,7 +1,9 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { ConnectButton } from "./ConnectButton";
 import { Logo } from "@/components/brand/Logo";
+import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Markets" },
@@ -12,29 +14,42 @@ const NAV = [
 
 export function Chrome() {
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/95 backdrop-blur-sm">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <div className="flex h-14 items-center justify-between gap-4">
-          <Logo href="/" size="sm" />
-          <div className="shrink-0">
-            <ConnectButton />
-          </div>
+    <header className="glass-header sticky top-0 z-50 w-full supports-[backdrop-filter]:bg-white/45">
+      <div className="mx-auto grid h-[4.25rem] max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-6 sm:h-16">
+        <div className="flex items-center justify-self-start">
+          <Logo href="/" variant="header" />
         </div>
-        <nav
-          className="-mx-1 flex gap-2 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="Main"
-        >
+
+        <nav className="flex items-center justify-center gap-0.5 sm:gap-1" aria-label="Main">
           {NAV.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-200 active:bg-neutral-300"
-            >
-              {item.label}
-            </a>
+            <NavLink key={item.href} href={item.href} label={item.label} />
           ))}
         </nav>
+
+        <div className="flex items-center justify-self-end">
+          <ConnectButton />
+        </div>
       </div>
     </header>
+  );
+}
+
+function NavLink({ href, label }: { href: string; label: string }) {
+  const pathname = usePathname();
+  const active =
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+
+  return (
+    <a
+      href={href}
+      className={cn(
+        "inline-flex items-center rounded-xl px-3.5 py-2 text-sm font-medium transition-all duration-200",
+        active
+          ? "bg-white/75 text-zinc-900 shadow-sm backdrop-blur-sm"
+          : "text-zinc-500 hover:bg-white/50 hover:text-zinc-900"
+      )}
+    >
+      {label}
+    </a>
   );
 }

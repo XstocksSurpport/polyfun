@@ -21,7 +21,7 @@ contract PolyfunLauncher {
     address public immutable marketImplementation;
     address public immutable migrationAdapter;
 
-    uint256 public defaultDuration = 7 days;
+    uint256 public defaultDuration = 1 days;
 
     event LaunchCreated(
         address indexed market,
@@ -69,7 +69,7 @@ contract PolyfunLauncher {
         payable
         returns (address market, address token)
     {
-        require(msg.value >= PolyfunConstants.DEPLOY_FEE, "DeployFee");
+        require(msg.value == PolyfunConstants.DEPLOY_FEE, "DeployFee");
         require(params.initialLiquidity == 0, "NoCreatorLiquidity");
 
         _sendFee(PolyfunConstants.DEPLOY_FEE);

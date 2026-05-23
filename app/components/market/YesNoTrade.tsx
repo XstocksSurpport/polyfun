@@ -6,6 +6,7 @@ import type { Market } from "@/lib/types";
 import { formatEth } from "@/lib/utils";
 import { ethToWei } from "@/lib/market-utils";
 import { EXPLORER_URL } from "@/lib/config";
+import { MIGRATION } from "@/lib/protocol";
 import { marketAbi } from "@/lib/abis";
 import { getContract } from "@/lib/ethers/contract";
 import { useWallet } from "@/providers/WalletProvider";
@@ -67,8 +68,26 @@ export function YesNoTrade({ market }: YesNoTradeProps) {
     }
   };
 
+  if (market.status === "migrated") {
+    return (
+      <div className="space-y-4 py-4 text-center">
+        <p className="text-sm font-medium text-zinc-700">Trading on Uniswap V3</p>
+        {market.externalPool ? (
+          <a
+            href={`https://app.uniswap.org/explore/pools/base/${market.externalPool}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
+          >
+            Trade on Uniswap
+          </a>
+        ) : null}
+      </div>
+    );
+  }
+
   if (market.status !== "active") {
-    return <div className="py-8 text-center text-sm text-neutral-300">{market.status}</div>;
+    return <div className="py-8 text-center text-sm text-zinc-400">{market.status}</div>;
   }
 
   if (!address) {

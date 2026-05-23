@@ -100,7 +100,7 @@ contract PolyfunMarket {
         emit YesPurchased(msg.sender, msg.value, sharesOut);
 
         if (willTrigger && yesValue >= PolyfunConstants.TRANSITION_THRESHOLD_ETH) {
-            _settleYesWin(newYesRatioBps);
+            _settleYesWin(msg.sender);
         }
     }
 
@@ -202,7 +202,7 @@ contract PolyfunMarket {
         return (quote.sharesOut, quote.newYesRatioBps, quote.willTrigger);
     }
 
-    function _settleYesWin(uint256) internal {
+    function _settleYesWin(address triggerBuyer) internal {
         status = MarketStatus.Migrated;
         migrationAdapter = MigrationAdapter.UniswapV3;
 
@@ -211,13 +211,26 @@ contract PolyfunMarket {
         _sendFee(PolyfunConstants.MIGRATION_FEE);
 
         uint256 lpEth = address(this).balance;
-        PolyfunToken(token).approve(migrationAdapterAddress, PolyfunConstants.EXTERNAL_LP_SUPPLY);
+        require(lpEth > 0, "NoLpEth");
+
+        PolyfunToken(token).transferForLp(
+            migrationAdapterAddress, PolyfunConstants.EXTERNAL_LP_SUPPLY
+        );
 
         externalPool = IMigrationAdapter(migrationAdapterAddress).migrate{value: lpEth}(
             token, PolyfunConstants.EXTERNAL_LP_SUPPLY, lpEth
         );
 
         PolyfunToken(token).enableTransfers();
+
+        if (triggerBuyer != address(0) && yesShares[triggerBuyer] > 0 && !yesClaimed[triggerBuyer]) {
+            yesClaimed[triggerBuyer] = true;
+            uint256 amount =
+                (yesShares[triggerBuyer] * PolyfunConstants.INTERNAL_POOL_SUPPLY) / totalYesShares;
+            PolyfunToken(token).transferFromMarket(triggerBuyer, amount);
+            emit YesTokensClaimed(triggerBuyer, amount);
+        }
+
         emit MarketMigrated(address(this), externalPool);
     }
 
@@ -227,5 +240,7 @@ contract PolyfunMarket {
         require(ok, "FeeTransferFailed");
     }
 
-    receive() external payable {}
+    receive() external payable {
+        require(status == MarketStatus.Active, "NotActive");
+    }
 }

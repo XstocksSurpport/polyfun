@@ -1,22 +1,44 @@
-import { Logo } from "@/components/brand/Logo";
+import { LogoMark } from "@/components/brand/LogoMark";
+import { socialLinks } from "@/lib/config";
 
 export function Footer() {
   return (
-    <footer className="border-t border-neutral-100 bg-neutral-50/50">
-      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6">
-        <Logo href="/" size="sm" showTagline />
-        <div className="flex items-center gap-3 text-xs text-neutral-400">
-          <a href="/docs" className="hover:text-neutral-700">
-            Docs
-          </a>
-          <span aria-hidden="true" className="text-neutral-300">
+    <footer className="glass-header mt-auto border-t border-zinc-200/40 supports-[backdrop-filter]:bg-white/35">
+      <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-6 py-12 text-center">
+        <a
+          href="/"
+          className="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900"
+        >
+          <LogoMark size={24} />
+          <span>
+            <span className="text-zinc-900">Poly</span>
+            <span className="text-cyan-500">fun</span>
+          </span>
+        </a>
+        <nav className="flex items-center gap-4 text-xs text-zinc-400" aria-label="Social">
+          <SocialLink label="X" href={socialLinks.x} />
+          <span aria-hidden className="text-zinc-300">
             ·
           </span>
-          <span className="font-mono tracking-wide text-neutral-300" title="Vanity address suffix">
-            0x…pppp
-          </span>
-        </div>
+          <SocialLink label="TG" href={socialLinks.telegram} />
+        </nav>
       </div>
     </footer>
+  );
+}
+
+function SocialLink({ label, href }: { label: string; href: string }) {
+  if (!href) {
+    return (
+      <span className="cursor-default text-zinc-300" title="Link coming soon">
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="hover:text-zinc-700">
+      {label}
+    </a>
   );
 }

@@ -29,7 +29,7 @@ export function MarketCard({ market }: MarketCardProps) {
   return (
     <Link
       href={`/market/${market.address}`}
-      className="block rounded-xl border border-neutral-100 bg-white p-5 transition-colors hover:border-neutral-200"
+      className="glass-panel block p-5 transition-all duration-300 hover:shadow-[0_20px_56px_rgba(0,0,0,0.08)]"
     >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">

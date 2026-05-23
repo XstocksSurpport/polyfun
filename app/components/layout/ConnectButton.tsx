@@ -66,7 +66,7 @@ function WalletModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-neutral-900/40 p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-zinc-900/30 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
@@ -74,7 +74,7 @@ function WalletModal({
       }}
     >
       <div
-        className="flex max-h-[min(520px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xl"
+        className="flex max-h-[min(520px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
@@ -157,7 +157,7 @@ function ConnectButtonInner() {
       <button
         type="button"
         onClick={() => disconnect()}
-        className="inline-flex h-8 items-center rounded-md border border-neutral-200 bg-white px-3 text-sm font-medium hover:bg-neutral-50"
+        className="inline-flex h-10 items-center rounded-xl border border-zinc-200/80 bg-white px-4 text-sm font-medium text-zinc-800 shadow-sm transition-all hover:bg-zinc-50"
       >
         {truncateAddress(address)}
       </button>
@@ -170,7 +170,7 @@ function ConnectButtonInner() {
         type="button"
         disabled={connecting}
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 min-w-[7.5rem] items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-neutral-800 disabled:opacity-40"
+        className="inline-flex h-10 items-center rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-all hover:bg-zinc-800 disabled:opacity-40"
       >
         {connecting ? "..." : "Connect wallet"}
       </button>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMarkets } from "@/hooks/useMarkets";
 import { MarketCard } from "@/components/market/MarketCard";
 import { EmptyBlock, LoadingBlock, ErrorBlock, SetupBlock } from "@/components/ui/State";
+import { cn } from "@/lib/utils";
 import type { MarketStatus } from "@/lib/types";
 
 type Filter = "all" | MarketStatus;
@@ -26,53 +27,56 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <section className="mb-10 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-neutral-400">
+    <div className="mx-auto max-w-4xl px-6 pb-32 pt-20 sm:px-8 sm:pt-24">
+      <header className="mb-16 flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-3">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">
             Markets
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-neutral-900">
+          </span>
+          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-[2rem] sm:leading-tight">
             Live predictions
           </h1>
         </div>
         <a
           href="/launch"
-          className="inline-flex min-h-11 items-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-800 active:bg-neutral-700"
+          className="glass-button inline-flex w-fit items-center rounded-xl px-5 py-2.5 text-sm font-medium text-zinc-800 transition-all hover:bg-white/70"
         >
-          Launch
+          Launch Token
         </a>
-      </section>
+      </header>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-neutral-100 pb-3">
+      <div className="glass-segment mb-20 inline-flex w-fit gap-1 p-1.5">
         {filters.map((f) => (
           <button
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-sm transition-colors ${
+            className={cn(
+              "rounded-xl px-5 py-2 text-xs transition-all duration-200",
               filter === f.id
-                ? "bg-neutral-900 text-white"
-                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-            }`}
+                ? "bg-white/90 font-semibold text-zinc-950 shadow-[0_2px_8px_rgba(0,0,0,0.06)] backdrop-blur-sm"
+                : "font-medium text-zinc-500 hover:text-zinc-900"
+            )}
           >
             {f.label}
           </button>
         ))}
       </div>
 
-      {isLoading && <LoadingBlock />}
-      {error && <ErrorBlock code={error.message} />}
-      {!isLoading && !error && !data?.configured && <SetupBlock />}
-      {!isLoading && data?.configured && markets.length === 0 && <EmptyBlock />}
+      <section className="mt-4 space-y-8">
+        {isLoading && <LoadingBlock />}
+        {error && <ErrorBlock code={error.message} />}
+        {!isLoading && !error && !data?.configured && <SetupBlock />}
+        {!isLoading && data?.configured && markets.length === 0 && <EmptyBlock />}
 
-      {!isLoading && markets.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {markets.map((market) => (
-            <MarketCard key={market.address} market={market} />
-          ))}
-        </div>
-      )}
+        {!isLoading && markets.length > 0 && (
+          <div className="grid gap-6 sm:grid-cols-2">
+            {markets.map((market) => (
+              <MarketCard key={market.address} market={market} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

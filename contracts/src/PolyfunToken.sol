@@ -45,7 +45,15 @@ contract PolyfunToken {
     }
 
     function transferFromMarket(address to, uint256 amount) external onlyMarket {
-        _transfer(market, to, amount);
+        _transferFromMarket(market, to, amount);
+    }
+
+    /// @dev LP migration path — bypasses transfer lock while market still holds supply.
+    function transferForLp(address to, uint256 amount) external onlyMarket {
+        require(balanceOf[market] >= amount, "Balance");
+        balanceOf[market] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(market, to, amount);
     }
 
     function approve(address spender, uint256 amount) external returns (bool) {
@@ -71,7 +79,11 @@ contract PolyfunToken {
 
     function _transfer(address from, address to, uint256 amount) internal {
         require(transfersEnabled, "Locked");
-        if (from != address(0) && to != address(0)) {
+        _transferFromMarket(from, to, amount);
+    }
+
+    function _transferFromMarket(address from, address to, uint256 amount) internal {
+        if (from != address(0) && to != address(0) && from != market) {
             _checkLaunchProtection(to, amount);
         }
         require(balanceOf[from] >= amount, "Balance");

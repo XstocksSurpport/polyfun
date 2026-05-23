@@ -1,4 +1,4 @@
-export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "84532");
+export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "8453");
 
 export const EXPLORER_URL =
   CHAIN_ID === 8453 ? "https://basescan.org" : "https://sepolia.basescan.org";
@@ -15,6 +15,12 @@ export const contracts = {
 };
 
 export const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+
+/** Set in .env.local when ready — empty = placeholder (no navigation). */
+export const socialLinks = {
+  x: process.env.NEXT_PUBLIC_X_URL ?? "",
+  telegram: process.env.NEXT_PUBLIC_TELEGRAM_URL ?? "",
+};
 
 export const chainParams = {
   chainId: `0x${CHAIN_ID.toString(16)}`,
