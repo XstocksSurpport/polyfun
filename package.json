@@ -5,6 +5,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:clean": "node scripts/dev.mjs --clean",
     "build": "npm run build --prefix app",
+    "vercel-build": "npm install --prefix app && npm run build --prefix app",
     "start": "npm run start --prefix app",
     "install:app": "npm install --prefix app",
     "contracts:build": "cd contracts && forge build",

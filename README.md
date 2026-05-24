@@ -28,6 +28,18 @@ npm run vanity       # http://localhost:8787
 
 After deploy, `app/.env.local` is auto-updated with launcher + registry addresses.
 
+## Deploy to Vercel
+
+The Next.js app lives in **`app/`** (not the repo root). In Vercel:
+
+1. **Project → Settings → General → Root Directory** → set to **`app`** → Save  
+2. **Build Command** → leave **empty** (default `next build`)  
+3. **Install Command** → leave **empty** (default `npm install`)  
+4. **Environment Variables** → copy from `app/.env.local.example` (use production Base mainnet values)  
+5. Redeploy
+
+If Root Directory is left at the repo root, the build runs `next` where it is not installed (`next: command not found`).
+
 ## Repo layout
 
 ```
