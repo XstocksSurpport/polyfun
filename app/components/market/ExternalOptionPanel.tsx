@@ -57,7 +57,7 @@ export function ExternalOptionPanel({ market }: ExternalOptionPanelProps) {
   };
 
   if (loading) return <div className="py-8 text-center text-sm text-neutral-300">...</div>;
-  if (error && !state) return <p className="text-xs text-no">{error}</p>;
+  if (error && !state) return <p className="text-xs text-neutral-600">{error}</p>;
 
   const endsAt = state?.roundEndsAt;
   const remaining =
@@ -110,8 +110,8 @@ export function ExternalOptionPanel({ market }: ExternalOptionPanelProps) {
             className={`rounded-xl border p-3 text-sm font-medium ${
               side === s
                 ? s === "up"
-                  ? "border-yes bg-yes-muted text-yes"
-                  : "border-no bg-no-muted text-no"
+                  ? "border-neutral-300 bg-neutral-100 text-neutral-900"
+                  : "border-neutral-300 bg-neutral-100 text-neutral-600"
                 : "border-neutral-100 text-neutral-600"
             }`}
           >
@@ -137,7 +137,7 @@ export function ExternalOptionPanel({ market }: ExternalOptionPanelProps) {
         ))}
       </div>
 
-      {error && <p className="text-xs text-no">{error}</p>}
+      {error && <p className="text-xs text-neutral-600">{error}</p>}
 
       <Button
         variant={side === "up" ? "yes" : "no"}

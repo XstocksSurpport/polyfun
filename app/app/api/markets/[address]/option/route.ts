@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { loadExternalOptionState } from "@/lib/server/external-option";
+import { apiErrorResponse, guardRateLimit, RATE } from "@/lib/server/api-guard";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ address: string }> }
 ) {
+  const limited = guardRateLimit(request, "option", RATE.trades.limit, RATE.trades.windowMs);
+  if (limited) return limited;
+
   const { address } = await params;
 
   if (!isAddress(address)) {
@@ -19,7 +23,6 @@ export async function GET(
     }
     return NextResponse.json({ option: state });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "LOAD_FAILED";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiErrorResponse(error, 500);
   }
 }

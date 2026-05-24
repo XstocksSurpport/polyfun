@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost" | "yes" | "no";
@@ -8,17 +8,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles = {
-  primary: "bg-neutral-900 text-white hover:bg-neutral-800",
-  secondary: "border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50",
-  ghost: "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
-  yes: "bg-yes text-white hover:opacity-90",
-  no: "bg-no text-white hover:opacity-90",
+  primary: "btn-accent",
+  secondary: "border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-50",
+  ghost: "text-zinc-950 hover:bg-zinc-100",
+  yes: "bg-[#16a34a] text-white hover:bg-[#15803d]",
+  no: "bg-[#dc2626] text-white hover:bg-[#b91c1c]",
 } as const;
 
 const sizeStyles = {
-  sm: "h-8 px-3 text-sm rounded-md",
-  md: "h-10 px-4 text-sm rounded-lg",
-  lg: "h-12 px-6 text-base rounded-lg",
+  sm: "h-8 px-3 text-xs rounded-md",
+  md: "h-9 px-4 text-sm rounded-md",
+  lg: "h-10 px-8 text-sm rounded-md",
 } as const;
 
 export const buttonClassName = (
@@ -28,8 +28,8 @@ export const buttonClassName = (
 ) =>
   cn(
     "inline-flex items-center justify-center font-medium transition-colors cursor-pointer select-none",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 focus-visible:ring-offset-2",
-    "disabled:cursor-not-allowed disabled:opacity-45",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950/20 focus-visible:ring-offset-2",
+    "disabled:cursor-not-allowed disabled:opacity-40",
     variantStyles[variant ?? "primary"],
     sizeStyles[size ?? "md"],
     className

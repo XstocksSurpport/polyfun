@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
-import { CHAIN_ID } from "@/lib/config";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { DocsContractAddresses } from "@/components/docs/DocsContractAddresses";
 import { launchProtection } from "@/lib/dex";
-import { FEES, FEE_RECEIVER, MIGRATION, TOKEN_SUPPLY, formatSupplyMillions } from "@/lib/protocol";
+import { FEES, FEE_RECEIVER, MARKET_DURATION_HOURS, MIGRATION, TOKEN_SUPPLY, formatSupplyMillions } from "@/lib/protocol";
 import { formatEth } from "@/lib/utils";
+import { Callout, Param } from "@/components/ui/Callout";
 
 export const metadata = {
   title: "Documentation",
@@ -12,224 +14,309 @@ const deployFee = formatEth(FEES.deployWei);
 const migrateFee = formatEth(FEES.migrationWei);
 const yesTarget = formatEth(MIGRATION.yesTargetWei, 0);
 const poolAtTrigger = formatEth(MIGRATION.totalPoolAtTriggerWei, 2);
-const chainName = CHAIN_ID === 8453 ? "Base" : "Base Sepolia";
-const chainId = CHAIN_ID;
 
 const sections = [
-  { id: "protocol", label: "Protocol" },
+  { id: "lifecycle", label: "Lifecycle" },
   { id: "deploy", label: "Deploy" },
   { id: "market", label: "Market" },
-  { id: "migrate", label: "Migration" },
-  { id: "settle", label: "Settlement" },
-  { id: "fees", label: "Fees" },
-  { id: "supply", label: "Supply" },
-  { id: "guards", label: "Guards" },
+  { id: "terminal", label: "Terminal" },
+  { id: "tokenomics", label: "Tokenomics" },
+  { id: "security", label: "Security" },
 ] as const;
 
 export default function DocsPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <header className="border-b border-neutral-200 pb-8">
-        <h1 className="font-mono text-sm font-medium uppercase tracking-widest text-neutral-400">
-          polyfun / docs
-        </h1>
-        <p className="mt-4 text-lg leading-snug text-neutral-900">
-          Launcher + YES/NO internal market on {chainName} (chain {chainId}). Migration
-          path is Uniswap V3; LP NFTs go to burn.
-        </p>
-      </header>
+    <>
+      <PageHeader
+        title="Polyfun Protocol"
+        description="Technical specification — internal bonding curve launcher and twin-sided YES/NO AMM on Base (Chain ID 8453)."
+      />
 
       <nav
-        className="-mx-4 mt-6 flex flex-wrap gap-2 border-b border-neutral-100 px-4 pb-4 sm:mx-0 sm:px-0"
+        className="page-container mb-8 flex flex-wrap gap-1.5 border-b border-zinc-200 pb-4"
         aria-label="Sections"
       >
         {sections.map((s) => (
           <a
             key={s.id}
             href={`#${s.id}`}
-            className="rounded-md border border-neutral-200 px-2.5 py-1 font-mono text-xs text-neutral-600 hover:border-neutral-400 hover:text-neutral-900"
+            className="rounded-md border border-zinc-200 px-2 py-0.5 text-[11px] font-medium text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-950"
           >
             {s.label}
           </a>
         ))}
       </nav>
 
-      <article className="mt-10 space-y-14 font-[family-name:var(--font-sans)]">
-        <Section id="protocol" title="Protocol">
-          <p className="text-neutral-700 leading-relaxed">
-            One deployment = <code className="text-sm">PolyfunToken</code> +{" "}
-            <code className="text-sm">PolyfunMarket</code>. Trading stays inside the market
-            contract until either migration fires or the round settles on NO.
+      <DocsContractAddresses />
+
+      <article className="page-container prose-docs space-y-12 pb-16">
+        <section>
+          <p>
+            Polyfun is an internal bonding curve launcher and twin-sided AMM (YES/NO prediction
+            market) natively deployed on <strong>Base</strong> (Chain ID:{" "}
+            <Param>8453</Param>). Upon successful migration gating, the protocol provisions
+            liquidity to Uniswap V3 and permanently burns the Liquidity Provider (LP) position via
+            the Nonfungible Position Manager (NFPM).
           </p>
-          <ul className="mt-4 list-none space-y-2 border-l-2 border-neutral-200 pl-4 font-mono text-sm text-neutral-800">
-            <li>
-              <span className="text-neutral-400">internal</span> — YES/NO buys, pool
-              accounting, countdown
-            </li>
-            <li>
-              <span className="text-neutral-400">migrate</span> — YES side hits threshold +
-              floor; Uniswap pool created in same tx as triggering buy
-            </li>
-            <li>
-              <span className="text-neutral-400">settle</span> — timer expired, threshold not
-              met; NO pro-rata ETH, YES worthless
-            </li>
-          </ul>
-          <p className="mt-4 text-sm text-neutral-500">
-            Migration gate: YES ≥ {MIGRATION.thresholdBps / 100}% of (YES+NO) pool{" "}
-            <em>and</em> YES ETH ≥ {yesTarget}. Reference pool at gate ≈ {poolAtTrigger}{" "}
-            total ({yesTarget} YES / remainder NO).
+        </section>
+
+        <Section id="lifecycle" title="1. Core State & Lifecycle">
+          <p>
+            Every token deployment instantiates a paired architectural coupling:{" "}
+            <code>PolyfunToken</code> (ERC20) and <code>PolyfunMarket</code> (Escrow/AMM). Asset
+            velocity and price discovery remain encapsulated within the market contract until a
+            terminal lifecycle event triggers:
+          </p>
+
+          <pre className="mt-4 overflow-x-auto rounded-md border border-zinc-200 bg-zinc-50 p-4 font-mono text-[11px] leading-relaxed text-zinc-700 sm:text-xs">
+{`                  ┌─────────────── [ Deploy ] ───────────────┐
+                  │                                          │
+                  ▼                                          ▼
+     ┌────────────────────────┐                 ┌────────────────────────┐
+     │  internal (Bonding)    │                 │     settle (Expiry)    │
+     │  - Dual-sided AMM      │                 │  - Threshold NOT met   │
+     │  - 1% protocol fee     │                 │  - YES = 0 | NO = Claim│
+     └────────────────────────┘                 └────────────────────────┘
+                  │
+                  ▼ (Threshold + Floor Met)
+     ┌────────────────────────┐
+     │   migrate (Terminal)   │
+     │  - Atomic UniV3 LP     │
+     │  - NFPM NFT -> Burn    │
+     └────────────────────────┘`}
+          </pre>
+
+          <dl className="mt-6 space-y-4">
+            <Phase term="internal">
+              Active trading phase ({MARKET_DURATION_HOURS}-hour countdown from deploy). Executes
+              YES/NO asset minting, global pool accounting, and chronological epoch countdown.
+            </Phase>
+            <Phase term="migrate">
+              Terminal optimistic execution path. Triggered atomically when YES side satisfies both
+              the saturation threshold and the ETH floor.
+            </Phase>
+            <Phase term="settle">
+              Terminal pessimistic execution path. Triggered post-expiry if the migration gate
+              criteria are not met. NO positions claim pro-rata collateral; YES positions are
+              hard-coded to zero value.
+            </Phase>
+          </dl>
+
+          <h3>Migration Gate Predicate</h3>
+          <p>
+            Migration conditions are evaluated on-chain via the following logic:
+          </p>
+          <div className="my-4 rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 font-mono text-sm text-zinc-800">
+            Gate = (Pool<sub>YES</sub> ≥ 0.90 × (Pool<sub>YES</sub> + Pool<sub>NO</sub>)) ∧ (
+            ETH<sub>YES</sub> ≥ <Param>{yesTarget}</Param>)
+          </div>
+          <p>
+            Reference state at exact gate saturation: ≈ <Param>{poolAtTrigger}</Param> cumulative
+            gross TVL (<Param>{yesTarget}</Param> assigned to YES / remainder residual NO skew).
           </p>
         </Section>
 
-        <Section id="deploy" title="Deploy">
-          <ul className="space-y-3 text-neutral-700">
-            <Li>
-              Wallet on {chainName}. Gas + deploy fee ({deployFee}) in native ETH.
-            </Li>
-            <Li>
-              <a href="/launch" className="underline decoration-neutral-300 hover:decoration-neutral-600">
-                /launch
-              </a>{" "}
-              — POST metadata, request CREATE2 salt (vanity worker), call{" "}
-              <code className="text-sm">createLaunch</code>.
-            </Li>
-            <Li>
-              Token address must end <code className="text-sm">0x…70707070</code> (
-              <code className="text-sm">pppp</code>). Launcher rejects anything else.
-            </Li>
-            <Li>
-              Indexer picks up the market after deploy block; UI polls{" "}
-              <code className="text-sm">/api/markets</code>.
-            </Li>
+        <Section id="deploy" title="2. Deployment Topology & Vanity Suffix Gating">
+          <p>
+            Initiated via Base mainnet. Target gas budget requires native ETH coverage alongside a
+            flat execution premium.
+          </p>
+          <ul>
+            <li>
+              <strong>Route:</strong>{" "}
+              <a href="/launch">/launch</a> — POST payload contains metadata, initializes a
+              decentralized vanity worker to compute a CREATE2 salt.
+            </li>
+            <li>
+              <strong>Address Verification:</strong> The protocol enforces an on-chain suffix
+              constraint. The low 4 bytes of the deployed token address must resolve to{" "}
+              <code>0xba5e</code> (<code>ba5e</code>).
+            </li>
+            <li>
+              <strong>Access Control:</strong> The generated salt is strictly cryptographically
+              bound to the <code>msg.sender</code> wallet. The deployment factory rejects foreign or
+              front-run salt injection.
+            </li>
+            <li>
+              <strong>Data Availability:</strong> UI states synchronize via polling{" "}
+              <code>/api/markets</code> triggered by custom indexer subgraphs tracking factory
+              deploy blocks.
+            </li>
           </ul>
+
+          <pre className="mt-4 overflow-x-auto rounded-md border border-zinc-200 bg-zinc-950 p-4 font-mono text-[13px] leading-relaxed text-zinc-100">
+{`// On-chain validation snippet
+require(
+  address(deployedToken) & 0xFFFFFFFF == 0x0000ba5e,
+  "Err: Invalid Suffix"
+);`}
+          </pre>
         </Section>
 
-        <Section id="market" title="Internal market">
-          <p className="text-neutral-700">
-            <code className="text-sm">buyYes</code> / <code className="text-sm">buyNo</code>{" "}
-            with ETH. {FEES.tradingBps / 100}% fee skimmed to{" "}
-            <code className="text-sm">FEE_RECEIVER</code> before side credit.
+        <Section id="market" title="3. Internal Market Mechanics">
+          <p>
+            Direct capital routing utilizes <code>buyYes</code> / <code>buyNo</code> entry points
+            using raw <code>msg.value</code> (ETH). A hard-coded{" "}
+            <Param>{FEES.tradingBps / 100}%</Param> protocol fee is sliced directly to the{" "}
+            <code>FEE_RECEIVER</code> prior to calculating pool invariant adjustments and crediting
+            user position weights.
           </p>
+
+          <h3>Execution Paths</h3>
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Def term="YES">
-              Long migration. Triggering buy can call migrate if bps + YES floor satisfied.
-              Post-migrate: claim internal allocation (800M slice), pro-rata to YES deposits.
+            <Def term="YES (Long Migration)">
+              The transaction that fulfills the bonding curve criteria executes{" "}
+              <code>migrate()</code> atomically inline. Post-migration, YES holders pull their
+              proportional share of the {formatSupplyMillions(TOKEN_SUPPLY.internal)} token
+              allocation pool relative to their internal deposit weight.
             </Def>
-            <Def term="NO">
-              Short migration. On settle: share of contract ETH balance by NO deposit weight.
-              YES ETH not refunded.
+            <Def term="NO (Short Settlement)">
+              If expiration is reached, NO holders claim a pro-rata share of the contract&apos;s
+              aggregate ETH balance based on relative pool weight. YES positions forfeit all
+              deposited capital.
             </Def>
           </dl>
         </Section>
 
-        <Section id="migrate" title="Migration (YES wins)">
-          <ul className="list-disc space-y-2 pl-5 text-neutral-700">
-            <li>Internal buys disabled.</li>
+        <Section id="terminal" title="4. Terminal State Resolution">
+          <h3>Path A: migrate (YES Victory)</h3>
+          <ul>
             <li>
-              {migrateFee} deducted from pool before LP mint ({FEES.migrationBpsAlt / 100}%
-              alt path exists in constants — on-chain uses fixed wei).
+              <strong>State Lock:</strong> Mutates internal AMM functions to disabled states.
             </li>
             <li>
-              {formatSupplyMillions(TOKEN_SUPPLY.externalLp)} tokens + residual ETH → Uniswap
-              V3; tick range fixed in adapter (not user-selected).
+              <strong>Fee Extraction:</strong> Deducts a fixed <Param>{migrateFee}</Param> protocol
+              migration fee (immutable wei constant in production bytecode).
             </li>
             <li>
-              {formatSupplyMillions(TOKEN_SUPPLY.internal)} held for YES claims; transfers
-              enabled after migrate.
+              <strong>Liquidity Provisioning:</strong> Automatically routes{" "}
+              {formatSupplyMillions(TOKEN_SUPPLY.externalLp)} tokens paired with all residual pool
+              ETH to a fresh Uniswap V3 pool. Tick ranges are hard-coded into the factory adapter
+              architecture (zero user-side slippage or range configuration).
             </li>
-            <li>NFPM position → burn address. No rug via LP pull.</li>
+            <li>
+              <strong>Distribution:</strong> Unlocks the {formatSupplyMillions(TOKEN_SUPPLY.internal)}{" "}
+              token tranche for internal YES claims; sets <code>transfersEnabled = true</code>.
+            </li>
+            <li>
+              <strong>Anti-Rug Enforcement:</strong> Transposes the Uniswap V3 NFPM ownership
+              directly to <code>address(0)</code> (Burn). Liquidity pull vectors via{" "}
+              <code>decreaseLiquidity</code> are permanently neutralized.
+            </li>
+          </ul>
+
+          <h3>Path B: settle (NO Victory)</h3>
+          <ul>
+            <li>
+              <strong>Trigger:</strong> Permissionless execution vector available to any EOA once
+              block timestamp surpasses expiration and migration predicates evaluate to false.
+              Caller pays gas; no MEV bounties.
+            </li>
+            <li>
+              <strong>Fee Capture:</strong> Deducts a flat{" "}
+              <Param>{FEES.settlementBps / 100}%</Param> platform fee (<code>settleNoWin</code>{" "}
+              path).
+            </li>
+            <li>
+              <strong>Liquidation:</strong> Disburses the remaining{" "}
+              <Param>{100 - FEES.settlementBps / 100}%</Param> of total contract ETH to NO
+              depositors. No external AMM pool is initialized.
+            </li>
           </ul>
         </Section>
 
-        <Section id="settle" title="Settlement (NO wins)">
-          <p className="text-neutral-700">
-            Callable once expiry passed and migration predicate false. Anyone can submit;
-            pays gas only.
-          </p>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-neutral-700">
+        <Section id="tokenomics" title="5. Tokenomics & Fee Structure">
+          <h3>Token Allocation</h3>
+          <ul>
             <li>
-              {FEES.settlementBps / 100}% of contract balance → platform (
-              <code className="text-sm">settleNoWin</code> fee path).
+              <strong>Total Supply Max Cap:</strong>{" "}
+              <Param>1 × 10⁹ × 10¹⁸</Param> (1B tokens, 18 decimals)
             </li>
-            <li>Remainder split across NO depositors.</li>
-            <li>No Uniswap pool. Token never becomes freely transferable via migrate path.</li>
+            <li>
+              <strong>Internal Distribution (Bonding / Claims):</strong>{" "}
+              <Param>{TOKEN_SUPPLY.internalBps / 100}%</Param> (
+              {formatSupplyMillions(TOKEN_SUPPLY.internal)})
+            </li>
+            <li>
+              <strong>External Liquidity (Uniswap V3 LP):</strong>{" "}
+              <Param>{TOKEN_SUPPLY.externalLpBps / 100}%</Param> (
+              {formatSupplyMillions(TOKEN_SUPPLY.externalLp)})
+            </li>
           </ul>
-        </Section>
 
-        <Section id="fees" title="Fees">
-          <div className="overflow-hidden rounded-lg border border-neutral-200">
-            <table className="w-full text-left font-mono text-sm">
-              <thead className="bg-neutral-50 text-neutral-500">
+          <h3>Protocol Matrix</h3>
+          <div className="overflow-hidden rounded-md border border-zinc-200 not-prose">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-zinc-200 bg-zinc-50 text-zinc-500">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Kind</th>
-                  <th className="px-3 py-2 font-medium">Rate</th>
-                  <th className="px-3 py-2 font-medium">Hook</th>
+                  <th className="px-4 py-2.5 font-medium">Operation</th>
+                  <th className="px-4 py-2.5 font-medium">Type</th>
+                  <th className="px-4 py-2.5 font-medium">Rate / Cost</th>
+                  <th className="px-4 py-2.5 font-medium">Hook / Target</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 text-neutral-800">
+              <tbody className="divide-y divide-zinc-100 text-zinc-700">
                 <tr>
-                  <td className="px-3 py-2">deploy</td>
-                  <td className="px-3 py-2 tabular-nums">{deployFee}</td>
-                  <td className="px-3 py-2 text-neutral-600">createLaunch</td>
+                  <td className="px-4 py-2.5 font-medium text-zinc-950">Deploy</td>
+                  <td className="px-4 py-2.5">Flat Fee</td>
+                  <td className="px-4 py-2.5 tabular-nums">{deployFee}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-500">createLaunch()</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">trade</td>
-                  <td className="px-3 py-2 tabular-nums">{FEES.tradingBps / 100}%</td>
-                  <td className="px-3 py-2 text-neutral-600">buyYes / buyNo</td>
+                  <td className="px-4 py-2.5 font-medium text-zinc-950">Trade</td>
+                  <td className="px-4 py-2.5">Percentage</td>
+                  <td className="px-4 py-2.5 tabular-nums">{FEES.tradingBps / 100}%</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-500">
+                    buyYes() / buyNo()
+                  </td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">migration</td>
-                  <td className="px-3 py-2 tabular-nums">{migrateFee}</td>
-                  <td className="px-3 py-2 text-neutral-600">migrate (YES win)</td>
+                  <td className="px-4 py-2.5 font-medium text-zinc-950">Migration</td>
+                  <td className="px-4 py-2.5">Fixed Slice</td>
+                  <td className="px-4 py-2.5 tabular-nums">{migrateFee}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-500">migrate() (YES Win)</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">settlement</td>
-                  <td className="px-3 py-2 tabular-nums">{FEES.settlementBps / 100}%</td>
-                  <td className="px-3 py-2 text-neutral-600">settleNoWin</td>
+                  <td className="px-4 py-2.5 font-medium text-zinc-950">Settlement</td>
+                  <td className="px-4 py-2.5">Percentage</td>
+                  <td className="px-4 py-2.5 tabular-nums">{FEES.settlementBps / 100}%</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-500">
+                    settleNoWin() (NO Win)
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <p className="mt-3 font-mono text-xs text-neutral-400 break-all">
-            receiver {FEE_RECEIVER}
-          </p>
         </Section>
 
-        <Section id="supply" title="Supply">
-          <ul className="mt-2 space-y-1 font-mono text-sm text-neutral-800">
-            <li>total — 1e9 * 1e18</li>
-            <li>internal — {TOKEN_SUPPLY.internalBps / 100}% ({formatSupplyMillions(TOKEN_SUPPLY.internal)})</li>
-            <li>external LP — {TOKEN_SUPPLY.externalLpBps / 100}% ({formatSupplyMillions(TOKEN_SUPPLY.externalLp)})</li>
+        <Section id="security" title="6. Security Guards & System Constraints">
+          <ul>
+            <li>
+              <strong>Deterministic LP Lock:</strong> The NFPM token destination is strictly assigned
+              to the burn address inside the migration transaction payload.
+            </li>
+            <li>
+              <strong>Launch Anti-Whale / Anti-Bot Window:</strong> The first{" "}
+              <Param>{launchProtection.guardBlocks}</Param> blocks post-deployment enforce strict{" "}
+              <code>tx.origin == msg.sender</code> (EOA-only validation). Individual swap volume is
+              hard-capped at <Param>{launchProtection.maxBuyBps / 100}%</Param> of total supply per
+              transaction.
+            </li>
+            <li>
+              <strong>Factory Isolation:</strong> Only tokens carrying the validated{" "}
+              <code>ba5e</code> suffix minted via the verified factory can initialize markets. Direct
+              manual injections are rejected at the edge.
+            </li>
           </ul>
-          <p className="mt-4 text-sm text-neutral-500">
-            Suffix check is on the low 4 bytes of the token address, not a string in metadata.
-          </p>
-        </Section>
 
-        <Section id="guards" title="Guards">
-          <ul className="space-y-3 text-neutral-700">
-            <Li>
-              <strong className="text-neutral-900">LP lock.</strong> Post-migrate NFPM NFT
-              owner is burn; decreaseLiquidity unavailable to launcher.
-            </Li>
-            <Li>
-              <strong className="text-neutral-900">Launch window.</strong> First{" "}
-              {launchProtection.guardBlocks} blocks: EOA-only buys, max transfer{" "}
-              {launchProtection.maxBuyBps / 100}% of supply per tx.
-            </Li>
-            <Li>
-              <strong className="text-neutral-900">Entry.</strong> Only launcher-issued{" "}
-              <code className="text-sm">pppp</code> tokens. No direct market deploy.
-            </Li>
-          </ul>
-          <p className="mt-6 border-t border-neutral-100 pt-4 text-sm text-neutral-500">
-            Not shipped: Aerodrome adapter, BREAK/FAIL external options. Spec lives in{" "}
-            <code className="text-sm">docs/DEVELOPMENT.md</code>.
-          </p>
+          <Callout title="Note" className="mt-6">
+            Aerodrome V2 adapter matrices and BREAK/FAIL emergency state overrides are omitted from
+            the initial production build. For upcoming feature specs, refer to{" "}
+            <code>docs/DEVELOPMENT.md</code>.
+          </Callout>
         </Section>
       </article>
-    </div>
+    </>
   );
 }
 
@@ -243,22 +330,27 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-10">
-      <h2 className="text-base font-semibold tracking-tight text-neutral-900">{title}</h2>
-      <div className="mt-3">{children}</div>
+    <section id={id} className="scroll-mt-20">
+      <h2>{title}</h2>
+      <div>{children}</div>
     </section>
   );
 }
 
-function Li({ children }: { children: ReactNode }) {
-  return <li className="leading-relaxed">{children}</li>;
+function Phase({ term, children }: { term: string; children: ReactNode }) {
+  return (
+    <div>
+      <dt className="font-display text-sm font-semibold text-zinc-950">{term}</dt>
+      <dd className="mt-1 text-zinc-600">{children}</dd>
+    </div>
+  );
 }
 
 function Def({ term, children }: { term: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-neutral-200 px-3 py-3">
-      <dt className="font-mono text-xs font-medium uppercase text-neutral-500">{term}</dt>
-      <dd className="mt-1.5 text-sm leading-relaxed text-neutral-700">{children}</dd>
+    <div className="rounded-md border border-zinc-200 px-4 py-3">
+      <dt className="font-display text-sm font-semibold text-zinc-950">{term}</dt>
+      <dd className="mt-1.5 text-sm leading-relaxed text-zinc-600">{children}</dd>
     </div>
   );
 }

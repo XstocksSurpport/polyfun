@@ -9,6 +9,11 @@
     "install:app": "npm install --prefix app",
     "contracts:build": "cd contracts && forge build",
     "contracts:test": "cd contracts && forge test",
+    "deploy:mainnet": "node scripts/deploy-mainnet.mjs",
+    "bootstrap:genesis": "node scripts/bootstrap-genesis-market.mjs",
+    "bootstrap:platform": "node scripts/bootstrap-platform-market.mjs",
+    "deploy:launcher-v2": "node scripts/deploy-launcher-v2.mjs",
+    "deploy:platform": "node scripts/deploy-platform-token.mjs",
     "deploy:sepolia": "node scripts/deploy-sepolia.mjs",
     "vanity:install": "npm install --prefix vanity",
     "vanity": "npm run start --prefix vanity"

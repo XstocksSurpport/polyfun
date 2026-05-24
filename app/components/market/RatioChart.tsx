@@ -31,18 +31,19 @@ export function RatioChart({ trades }: RatioChartProps) {
     .join(" ");
 
   return (
-    <div className="rounded-xl border border-neutral-100 p-4">
+    <div className="card-surface p-5">
+      <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-zinc-500">YES ratio</p>
       <svg viewBox={`0 0 ${width} ${height}`} className="h-24 w-full" preserveAspectRatio="none">
         <line
           x1="0"
           y1={height - (90 / 100) * height}
           x2={width}
           y2={height - (90 / 100) * height}
-          stroke="#e5e5e5"
+          stroke="rgba(255,255,255,0.08)"
           strokeWidth="0.5"
           strokeDasharray="2 2"
         />
-        <path d={path} fill="none" stroke="#059669" strokeWidth="1.5" strokeLinecap="round" />
+        <path d={path} fill="none" stroke="#b8ff3c" strokeWidth="2" strokeLinecap="round" />
       </svg>
     </div>
   );

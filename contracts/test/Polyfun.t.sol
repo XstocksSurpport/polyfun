@@ -10,9 +10,9 @@ import {PolyfunLauncher} from "../src/PolyfunLauncher.sol";
 import {UniswapV3Adapter} from "../src/adapters/UniswapV3Adapter.sol";
 
 contract PolyfunConstantsTest is Test {
-    function test_ppppSuffixCheck() public pure {
-        address token = address(uint160(PolyfunConstants.PPPP_SUFFIX));
-        assertTrue(PolyfunConstants.hasPpppSuffix(token));
+    function test_ba5eSuffixCheck() public pure {
+        address token = address(uint160(PolyfunConstants.BA5E_SUFFIX));
+        assertTrue(PolyfunConstants.hasBa5eSuffix(token));
     }
 
     function test_settlementFeeBps() public pure {
@@ -48,9 +48,9 @@ contract PolyfunLauncherTest is Test {
     }
 
     function test_predictTokenAddress_deterministic() public view {
-        bytes32 salt = keccak256("test-salt");
-        address a = launcher.predictTokenAddress(salt);
-        address b = launcher.predictTokenAddress(salt);
+        bytes32 rawSalt = keccak256("test-salt");
+        address a = launcher.predictTokenAddress(address(this), rawSalt);
+        address b = launcher.predictTokenAddress(address(this), rawSalt);
         assertEq(a, b);
     }
 }

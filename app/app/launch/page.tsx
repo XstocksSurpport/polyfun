@@ -1,15 +1,17 @@
-import dynamic from "next/dynamic";
-
-const LaunchForm = dynamic(() => import("@/components/launch/LaunchForm").then((m) => m.LaunchForm), {
-  loading: () => (
-    <div className="mx-auto max-w-lg py-16 text-center text-sm text-neutral-400">Loading…</div>
-  ),
-});
+import { LaunchForm } from "@/components/launch/LaunchForm";
 
 export default function LaunchPage() {
   return (
-    <div className="px-4 py-10 sm:px-6">
-      <LaunchForm />
+    <div className="page-container pb-24">
+      <div className="mx-auto w-full max-w-lg">
+        <header className="mb-10">
+          <h1 className="text-4xl font-bold tracking-tighter text-zinc-950 sm:text-5xl">Launch</h1>
+          <p className="mt-3 text-base text-zinc-500 sm:text-lg">
+            Deploy a new YES/NO market on Base.
+          </p>
+        </header>
+        <LaunchForm />
+      </div>
     </div>
   );
 }

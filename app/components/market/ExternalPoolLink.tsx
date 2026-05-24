@@ -18,7 +18,7 @@ export function ExternalPoolLink({ market, className }: ExternalPoolLinkProps) {
       href={dexscreenerPoolUrl(market.externalPool)}
       target="_blank"
       rel="noreferrer"
-      className={`font-mono text-xs text-yes underline ${className ?? ""}`}
+      className={`font-mono text-xs text-neutral-900 underline ${className ?? ""}`}
     >
       {dex} · {market.externalPool.slice(0, 6)}...{market.externalPool.slice(-4)}
     </a>

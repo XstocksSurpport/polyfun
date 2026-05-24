@@ -17,9 +17,12 @@ async function resolveLauncher(body) {
   if (!launcher || !isAddress(launcher)) {
     throw new Error("LAUNCHER_ADDRESS_MISSING");
   }
+  if (!body.creator || !isAddress(body.creator)) {
+    throw new Error("INVALID_CREATOR");
+  }
   const chainId = body.chainId ?? CHAIN_ID;
   const { tokenImplementation } = await readLauncherImpls(launcher, chainId);
-  return { launcher, chainId, tokenImplementation };
+  return { launcher, creator: body.creator, chainId, tokenImplementation };
 }
 
 const server = createServer(async (req, res) => {
@@ -38,11 +41,9 @@ const server = createServer(async (req, res) => {
     }
 
     try {
-      const { launcher, tokenImplementation } = await resolveLauncher(body);
+      const { launcher, creator, tokenImplementation } = await resolveLauncher(body);
       const started = Date.now();
-      const { salt, predictedAddress, attempts } = grindSalt(launcher, tokenImplementation, {
-        onProgress: (n) => console.log(`[vanity] ${n} attempts…`),
-      });
+      const { salt, predictedAddress, attempts } = grindSalt(launcher, creator, tokenImplementation);
       console.log(
         `[vanity] found salt in ${attempts} attempts (${Date.now() - started}ms) → ${predictedAddress}`
       );
@@ -56,16 +57,18 @@ const server = createServer(async (req, res) => {
   if (req.method === "GET" && req.url?.startsWith("/predict")) {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const salt = url.searchParams.get("salt");
+    const creator = url.searchParams.get("creator");
     const launcherParam = url.searchParams.get("launcher") ?? LAUNCHER;
-    if (!salt || !launcherParam || !isAddress(launcherParam)) {
+    if (!salt || !creator || !launcherParam || !isAddress(launcherParam) || !isAddress(creator)) {
       return json(res, 400, { error: "INVALID_PARAMS" });
     }
     try {
       const { launcher, tokenImplementation } = await resolveLauncher({
         launcher: launcherParam,
+        creator,
         chainId: Number(url.searchParams.get("chainId") ?? CHAIN_ID),
       });
-      const predictedAddress = predictTokenAddress(launcher, tokenImplementation, salt);
+      const predictedAddress = predictTokenAddress(launcher, creator, tokenImplementation, salt);
       return json(res, 200, { predictedAddress });
     } catch (e) {
       const message = e instanceof Error ? e.message : "PREDICT_FAILED";

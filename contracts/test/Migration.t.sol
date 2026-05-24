@@ -28,6 +28,8 @@ contract MockMigrationAdapter is IMigrationAdapter {
     }
 }
 
+import {Create2Deployer} from "../src/lib/Create2Deployer.sol";
+
 contract MigrationTest is Test {
     address feeReceiver = PolyfunConstants.FEE_RECEIVER;
     address buyer = address(0xB0B);
@@ -92,6 +94,52 @@ contract MigrationTest is Test {
         vm.prank(address(market));
         token.transferForLp(address(adapter), 1 ether);
         assertEq(token.balanceOf(address(adapter)), 1 ether);
+    }
+
+    function test_cloneTokenInitialize() public {
+        address impl = address(new PolyfunToken());
+        assertEq(PolyfunToken(impl).decimals(), 18);
+        PolyfunToken(impl).initialize("T", "T", address(this));
+
+        address clone = Create2Deployer.deployClone(keccak256("clone-test"), impl);
+        assertEq(PolyfunToken(clone).decimals(), 18);
+        PolyfunToken(clone).initialize("T", "T", address(this));
+        assertEq(PolyfunToken(clone).symbol(), "T");
+    }
+
+    function test_createLaunch_fullWithBa5eSuffix() public {
+        PolyfunRegistry registry = new PolyfunRegistry();
+        address tokenImpl = address(new PolyfunToken());
+        address marketImpl = address(new PolyfunMarket());
+        PolyfunLauncher launcher = new PolyfunLauncher(
+            address(registry),
+            tokenImpl,
+            marketImpl,
+            address(adapter)
+        );
+
+        PolyfunLauncher.LaunchParams memory params = PolyfunLauncher.LaunchParams({
+            name: "Test",
+            symbol: "TST",
+            metadataHash: bytes32(uint256(1)),
+            initialLiquidity: 0,
+            burnPolyfun: false
+        });
+
+        bytes32 rawSalt;
+        address predicted;
+        for (uint256 i = 0; i < 200_000; i++) {
+            rawSalt = bytes32(i);
+            predicted = launcher.predictTokenAddress(address(this), rawSalt);
+            if (PolyfunConstants.hasBa5eSuffix(predicted)) break;
+        }
+        assertTrue(PolyfunConstants.hasBa5eSuffix(predicted), "ba5e salt not found");
+
+        (address launchedMarket, address token) =
+            launcher.createLaunch{value: PolyfunConstants.DEPLOY_FEE}(params, rawSalt);
+        assertEq(token, predicted);
+        assertTrue(registry.isOfficialMarket(launchedMarket));
+        assertEq(PolyfunToken(token).market(), launchedMarket);
     }
 
     function test_createLaunch_exactDeployFee() public {

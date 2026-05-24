@@ -2,12 +2,13 @@
 
 Last updated: 2026-05-23
 
-## CREATE2 / pppp
+## CREATE2 / ba5e
 
-- [x] `PolyfunConstants.PPPP_SUFFIX == 0x70707070` (4-byte tail, not `0x7070`)
+- [x] `PolyfunConstants.BA5E_SUFFIX == 0xBA5E` (2-byte tail → hex suffix `…ba5e`)
+- [x] `finalSalt = keccak256(abi.encodePacked(creator, rawSalt))` — MEV bots cannot reuse stolen salt
 - [x] `createLaunch` reverts with `SuffixMismatch` if token lacks suffix
-- [x] Vanity worker grinds salt against `predictTokenAddress(salt)` on launcher
-- [ ] Run `npm run vanity` before each mainnet launch batch
+- [x] Frontend/API grind `predictTokenAddress(creator, rawSalt)` against launcher clone hash
+- [ ] Run `npm run deploy:mainnet` then `npm run deploy:platform` on Base mainnet
 
 ## Base mainnet addresses (chainId 8453)
 
@@ -36,11 +37,11 @@ Deploy script reads `PolyfunChainConfig.getDex(chainId)` — **not** hardcoded r
 ## Launcher
 
 - [x] `msg.value == DEPLOY_FEE` (exact, no trapped ETH)
-- [x] `defaultDuration == 1 days`
+- [x] `defaultDuration == 2 days` (48 hours)
 
 ## Frontend (post-deploy)
 
-- [ ] Set `app/.env.local`: `NEXT_PUBLIC_LAUNCHER_ADDRESS`, `NEXT_PUBLIC_REGISTRY_ADDRESS`, `NEXT_PUBLIC_CHAIN_ID=8453`
+- [ ] Set `app/.env.local`: `NEXT_PUBLIC_LAUNCHER_ADDRESS`, `NEXT_PUBLIC_REGISTRY_ADDRESS`, `NEXT_PUBLIC_POLYFUN_ADDRESS`, `NEXT_PUBLIC_CHAIN_ID=8453`
 - [ ] Market page: progress bar from `yesValue` / 4 ETH; Uniswap link after migrate
 - [ ] Production build: no browser source maps (`productionBrowserSourceMaps: false`)
 
@@ -48,7 +49,8 @@ Deploy script reads `PolyfunChainConfig.getDex(chainId)` — **not** hardcoded r
 
 ```bash
 # contracts/.env: PRIVATE_KEY=...
-forge script script/Deploy.s.sol --rpc-url https://mainnet.base.org --broadcast
+npm run deploy:mainnet
+npm run deploy:platform
 ```
 
 **Do not deploy until fork tests pass and key is secured.**

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useWallet, type Eip6963ProviderDetail } from "@/providers/WalletProvider";
 import { walletConnectProjectId } from "@/lib/config";
 import { truncateAddress } from "@/lib/utils";
+import { buttonClassName } from "@/components/ui/Button";
 
 const WALLET_ORDER = [
   "io.metamask",
@@ -66,7 +67,7 @@ function WalletModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-zinc-900/30 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
@@ -74,28 +75,26 @@ function WalletModal({
       }}
     >
       <div
-        className="flex max-h-[min(520px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-md"
+        className="flex max-h-[min(520px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-ui border border-zinc-200 bg-white shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
-          <span className="text-sm font-semibold">Connect</span>
+        <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+          <span className="text-meta font-medium uppercase tracking-wide">Connect wallet</span>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-xl text-neutral-400 hover:bg-neutral-100"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-lg text-[#6B7280] hover:bg-zinc-50 hover:text-[#111111]"
             aria-label="Close"
           >
             ×
           </button>
         </div>
 
-        <div className="overflow-y-auto px-3 py-3">
+        <div className="overflow-y-auto px-2 py-2">
           {wallets.length === 0 && !walletConnectProjectId ? (
-            <p className="px-3 py-6 text-center text-sm text-neutral-500">
-              Install MetaMask, then refresh.
-            </p>
+            <p className="px-3 py-6 text-center text-meta">Install MetaMask, then refresh.</p>
           ) : null}
-          <ul className="space-y-1">
+          <ul className="space-y-0.5">
             {wallets.map((p) => (
               <li key={p.info.uuid}>
                 <button
@@ -105,17 +104,17 @@ function WalletModal({
                     await connectInjected(p);
                     onClose();
                   }}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-neutral-50 disabled:opacity-40"
+                  className="flex min-h-10 w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-zinc-50 disabled:opacity-40"
                 >
                   {p.info.icon ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.info.icon} alt="" className="h-9 w-9 rounded-lg border object-contain" />
+                    <img src={p.info.icon} alt="" className="h-8 w-8 rounded-full border border-zinc-200 object-contain" />
                   ) : (
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-xs">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-[10px]">
                       W
                     </span>
                   )}
-                  <span className="text-sm font-medium">{p.info.name}</span>
+                  <span className="text-sm font-medium text-[#111111]">{p.info.name}</span>
                 </button>
               </li>
             ))}
@@ -128,12 +127,12 @@ function WalletModal({
                     await connectWalletConnect();
                     onClose();
                   }}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-neutral-50 disabled:opacity-40"
+                  className="flex min-h-10 w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-zinc-50 disabled:opacity-40"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-xs font-semibold">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-semibold">
                     WC
                   </span>
-                  <span className="text-sm font-medium">WalletConnect</span>
+                  <span className="text-sm font-medium text-[#111111]">WalletConnect</span>
                 </button>
               </li>
             ) : null}
@@ -146,7 +145,7 @@ function WalletModal({
 }
 
 function ConnectButtonInner() {
-  const { address, connecting, getProviders, connectInjected, connectWalletConnect, disconnect } =
+  const { address, connecting, restoring, getProviders, connectInjected, connectWalletConnect } =
     useWallet();
   const [open, setOpen] = useState(false);
 
@@ -154,13 +153,15 @@ function ConnectButtonInner() {
 
   if (address) {
     return (
-      <button
-        type="button"
-        onClick={() => disconnect()}
-        className="inline-flex h-10 items-center rounded-xl border border-zinc-200/80 bg-white px-4 text-sm font-medium text-zinc-800 shadow-sm transition-all hover:bg-zinc-50"
+      <a
+        href="/portfolio"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-zinc-200 bg-white pl-1 pr-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-zinc-50 sm:pr-2.5"
       >
-        {truncateAddress(address)}
-      </button>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-zinc-900 text-[10px] font-medium text-zinc-50">
+          {address.slice(2, 4).toUpperCase()}
+        </span>
+        <span className="hidden sm:inline">{truncateAddress(address)}</span>
+      </a>
     );
   }
 
@@ -170,9 +171,9 @@ function ConnectButtonInner() {
         type="button"
         disabled={connecting}
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 items-center rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-all hover:bg-zinc-800 disabled:opacity-40"
+        className={buttonClassName("primary", "sm", "h-8 shrink-0 px-3")}
       >
-        {connecting ? "..." : "Connect wallet"}
+        {connecting || restoring ? "…" : "Connect"}
       </button>
       <WalletModal
         open={open}

@@ -9,7 +9,7 @@
 | Chain ID | 8453（Mainnet）/ 84532（Sepolia） |
 | 外盘 DEX | Uniswap V3 / Aerodrome |
 | 平台币 | **POLYFUN**（ERC-20） |
-| Token 尾缀 | 所有平台发行 Token 必须以 **`pppp`** 结尾（见 [§6.9](#69-create2-与-pppp-地址尾缀)） |
+| Token 尾缀 | 所有平台发行 Token 必须以 **`ba5e`** 结尾（见 [§6.9](#69-create2-与-ba5e-地址尾缀)） |
 | 文档版本 | v0.7.1 |
 | 最后更新 | 2026-05-23 |
 
@@ -38,7 +38,7 @@
 
 ### 1.1 产品定位
 
-Polyfun 是一个部署在 **Base** 上的 **以预测驱动的 Meme 代币发射台（Launchpad）**。平台由 **POLYFUN 平台币** 与 **唯一官方入口 PolyfunLauncher** 驱动：任何用户均可通过 Launcher 发行自己的 Meme Token，但 **所有 Token 必须经由平台工厂部署、遵循同一套预测—曲线—清算—迁移逻辑**，且合约地址尾缀统一为 **`pppp`**（对标 Pump.fun 的 `...pump` 品牌识别）。
+Polyfun 是一个部署在 **Base** 上的 **以预测驱动的 Meme 代币发射台（Launchpad）**。平台由 **POLYFUN 平台币** 与 **唯一官方入口 PolyfunLauncher** 驱动：任何用户均可通过 Launcher 发行自己的 Meme Token，但 **所有 Token 必须经由平台工厂部署、遵循同一套预测—曲线—清算—迁移逻辑**，且合约地址尾缀统一为 **`ba5e`**（Polyfun 品牌 hex 尾字节 `0xBA5E`）。
 
 开发者通过 Launcher 创建代币时，内盘阶段将资金池拆分为 **YES（看涨/能成功上线）** 与 **NO（看跌/发射失败）** 两种预测份额。当 YES 资金占比达到 **90% 阈值** 时，内盘瞬间锁定，触发原子化清算与外盘迁移；若倒计时结束仍未达阈值，则 NO 获胜，代币发射失败。
 
@@ -915,65 +915,39 @@ function buyYes(uint256 amountIn, uint256 minSharesOut) external nonReentrant {
 6. Token 启用 LaunchProtection（§6.12）
 ```
 
-### 6.9 CREATE2 与 `pppp` 地址尾缀
+### 6.9 CREATE2 与 `ba5e` 地址尾缀
 
 #### 背景
 
-Pump.fun 在 Solana 上使用 Vanity Mint，使 Token 地址以 **`pump`** 结尾（Base58）。Polyfun 在 EVM 上采用同等品牌策略：所有平台发行的 Token **必须** 以 **`pppp`** 结尾。
+Polyfun 品牌尾缀为 hex **`…ba5e`**（链上 `uint160(addr) & 0xFFFF == 0xBA5E`）。期望 grind 次数 ≈ **65536**，浏览器/Node 毫秒级完成。
 
-由于 EVM 地址为十六进制（仅 `0-9` `a-f`），字母 `p` 不是合法 hex 字符，因此链上实现采用 **ASCII 编码尾缀**：
-
-```
-"pppp" → 0x70 0x70 0x70 0x70 → 地址最低 4 字节 = 0x70707070
-```
+**防 MEV：** `finalSalt = keccak256(abi.encodePacked(msg.sender, rawSalt))`；用户仅提交 `rawSalt`，夹子偷 salt 后因 `msg.sender` 不同而 revert。
 
 **校验规则（Launcher 部署时强制）：**
 
 ```solidity
-bytes20 tokenAddr = bytes20(token);
-require(
-    uint32(uint160(tokenAddr)) & 0xFFFFFFFF == 0x70707070,
-    "InvalidSuffix"
-);
-// 等价：address(token) 的 hex 表示必须以 "...70707070" 结尾
-// 前端展示时可高亮末 4 位为 "pppp" 品牌标识
+require(uint160(token) & 0xFFFF == 0xBA5E, "SuffixMismatch");
 ```
 
 #### CREATE2 部署
 
 ```solidity
-// PolyfunTokenDeployer.sol
-function deploy(bytes32 salt, bytes calldata initData) external returns (address token) {
-    token = Clones.cloneDeterministic(tokenImplementation, salt);
-    // 或 Token 为完整合约：CREATE2(tokenBytecode, salt)
-    require(_hasPpppSuffix(token), "SuffixMismatch");
-    PolyfunToken(token).initialize(initData);
-}
+bytes32 finalSalt = keccak256(abi.encodePacked(msg.sender, rawSalt));
+token = Create2Deployer.deploy(finalSalt, cloneBytecode(tokenImplementation));
+require(PolyfunConstants.hasBa5eSuffix(token), "SuffixMismatch");
 ```
 
-**地址预测公式：**
+**地址预测：** `predictTokenAddress(creator, rawSalt)` 使用相同 `finalSalt` 与 clone hash。
 
-```
-tokenAddress = keccak256(0xff ++ deployer ++ salt ++ keccak256(initCode))[12:]
-```
-
-#### Vanity Salt 预计算（链下服务）
-
-```
-┌──────────┐    salt 请求     ┌─────────────────┐    CREATE2    ┌──────────────┐
-│  /launch │ ───────────────► │ Vanity Worker   │ ────────────► │ Token ...pppp│
-│  前端    │ ◄─────────────── │ (Rust/Go 多线程)│               └──────────────┘
-└──────────┘    salt + 预测地址 └─────────────────┘
-```
+#### Vanity Salt（链下 / 前端）
 
 | 项 | 说明 |
 |----|------|
-| 算力 | 4 字节尾缀期望尝试次数 ≈ 2³²（~43 亿），单线程约分钟级；生产环境 GPU/多实例并行 |
-| API | `POST /api/vanity/salt` → `{ salt, predictedAddress, expiresAt }` |
-| 时效 | salt 预占 10 分钟，超时释放；绑定 Creator 钱包防抢跑 |
-| 验证 | Launcher 链上再次校验尾缀，**不匹配则 revert** |
+| 算力 | 2 字节尾缀期望 ≈ 65536 次，<30ms（JS） |
+| API | `POST /api/vanity/salt` body `{ creator }` → `{ salt, predictedAddress }` |
+| 验证 | Launcher 链上再次校验尾缀 + sender-bound salt |
 
-> Market 合约地址 **不要求** `pppp` 尾缀；品牌识别以 **Token 地址** 为准（与 Pump.fun 一致）。
+> Market 合约地址 **不要求** `ba5e` 尾缀；品牌识别以 **Token 地址** 为准。
 
 ### 6.10 协议强制执行（逻辑一致性）
 

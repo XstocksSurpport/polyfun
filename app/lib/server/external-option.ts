@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { Address } from "viem";
 import { CHAIN_ID } from "../config";
 import { EXTERNAL_OPTION, calcTargetMcapUsd } from "../external-option";

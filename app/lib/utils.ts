@@ -18,9 +18,12 @@ export function truncateAddress(address: string, chars = 4) {
   return `${address.slice(0, 6 + chars)}...${address.slice(-4 - chars)}`;
 }
 
-export function hasPpppSuffix(address: string) {
-  return address.toLowerCase().endsWith("70707070");
+export function hasBa5eSuffix(address: string) {
+  return address.toLowerCase().endsWith("ba5e");
 }
+
+/** @deprecated use hasBa5eSuffix */
+export const hasPpppSuffix = hasBa5eSuffix;
 
 export function formatCountdown(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -31,9 +34,9 @@ export function formatCountdown(seconds: number) {
 
 export function displayAddress(address: string) {
   const lower = address.toLowerCase();
-  if (lower.endsWith("70707070")) {
-    const prefix = address.slice(0, -8);
-    return { prefix, suffix: "pppp", hexSuffix: address.slice(-8) };
+  if (lower.endsWith("ba5e")) {
+    const prefix = address.slice(0, -4);
+    return { prefix, suffix: "ba5e", hexSuffix: address.slice(-4) };
   }
   return { prefix: truncateAddress(address), suffix: null, hexSuffix: null };
 }

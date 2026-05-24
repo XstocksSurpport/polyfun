@@ -26,6 +26,7 @@ export function useMarkets() {
       };
     },
     refetchInterval: (query) => (query.state.data?.configured ? 60_000 : false),
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -50,11 +51,12 @@ export function useMarket(address: string) {
   });
 }
 
-export function useMarketTrades(address: string) {
+export function useMarketTrades(address: string, options?: { live?: boolean }) {
+  const live = options?.live ?? true;
   return useQuery({
     queryKey: ["trades", address],
     queryFn: async () => {
-      const res = await fetch(`/api/markets/${address}/trades`);
+      const res = await fetch(`/api/markets/${address}/trades`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) return { trades: [], error: data.error as string | undefined };
       return {
@@ -68,6 +70,7 @@ export function useMarketTrades(address: string) {
       };
     },
     enabled: Boolean(address),
-    refetchInterval: 30_000,
+    refetchInterval: live ? 5_000 : 30_000,
+    refetchOnWindowFocus: live,
   });
 }

@@ -1,20 +1,25 @@
 import type { MarketStatus } from "./types";
 
+/** On-chain enum: Active=0, Migrated=1, SettledNo=2 */
 export function mapMarketStatus(code: number): MarketStatus {
   switch (code) {
     case 0:
       return "active";
     case 1:
-      return "settling";
-    case 2:
       return "migrated";
-    case 3:
+    case 2:
       return "failed";
-    case 4:
-      return "cancelled";
     default:
       return "failed";
   }
+}
+
+export function isMarketExpired(expiryTs: number, nowSec = Date.now() / 1000): boolean {
+  return nowSec >= expiryTs;
+}
+
+export function canTradeMarket(market: { status: MarketStatus; expiryTs: number }): boolean {
+  return market.status === "active" && !isMarketExpired(market.expiryTs);
 }
 
 export function calcYesRatioBps(yesValue: bigint, noValue: bigint): number {
@@ -29,4 +34,10 @@ export function weiToEth(wei: bigint): number {
 
 export function ethToWei(eth: number): bigint {
   return BigInt(Math.round(eth * 1e18));
+}
+
+/** Canonical market question — only `$SYMBOL` varies. */
+export function formatMarketProposition(symbol: string): string {
+  const normalized = symbol.replace(/^\$/, "").trim().toUpperCase();
+  return `Will $${normalized} migrate to Uniswap (YES ≥ 90% + 4 ETH) before expiry?`;
 }

@@ -23,7 +23,7 @@ export function ProgressBar({
     <div className="w-full">
       {showLabels && (
         <div className="mb-2 flex items-end justify-between">
-          <span className="text-2xl font-semibold tabular-nums text-yes sm:text-3xl">
+          <span className="text-2xl font-semibold tabular-nums text-neutral-900 sm:text-3xl">
             YES {formatPercent(yesRatioBps)}
           </span>
           <span className="text-sm tabular-nums text-neutral-400">{thresholdPercent}%</span>
@@ -37,7 +37,7 @@ export function ProgressBar({
       >
         <div
           className={cn(
-            "absolute inset-y-0 left-0 rounded-full bg-yes transition-all duration-500",
+            "absolute inset-y-0 left-0 rounded-full bg-neutral-900 transition-all duration-500",
             inSqueezeZone && "animate-pulse-soft"
           )}
           style={{ width: `${Math.min(percent, 100)}%` }}

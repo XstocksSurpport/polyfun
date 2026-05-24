@@ -12,7 +12,7 @@ export function PpppBadge({ address, showFull = false, className }: PpppBadgePro
 
   if (!suffix) {
     return (
-      <span className={`font-mono text-xs text-neutral-400 ${className ?? ""}`}>
+      <span className={`font-mono text-xs text-zinc-500 ${className ?? ""}`}>
         {prefix}
       </span>
     );
@@ -20,17 +20,19 @@ export function PpppBadge({ address, showFull = false, className }: PpppBadgePro
 
   if (showFull) {
     return (
-      <span className={`font-mono text-xs text-neutral-500 ${className ?? ""}`}>
+      <span className={`font-mono text-xs text-zinc-500 ${className ?? ""}`}>
         {prefix}
-        <span className="text-neutral-900 font-semibold">{suffix}</span>
+        <span className="font-semibold text-[#b8ff3c]">{suffix}</span>
       </span>
     );
   }
 
   return (
     <div className={`flex items-center gap-1.5 ${className ?? ""}`}>
-      <span className="font-mono text-xs text-neutral-400">{prefix.slice(0, 10)}...</span>
-      <Badge variant="pppp">pppp</Badge>
+      <span className="font-mono text-xs text-zinc-500">{prefix.slice(0, 10)}...</span>
+      <Badge variant="ba5e">ba5e</Badge>
     </div>
   );
 }
+
+export const Ba5eBadge = PpppBadge;

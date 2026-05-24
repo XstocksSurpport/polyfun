@@ -12,6 +12,7 @@ import {
 } from "react";
 import { BrowserProvider, JsonRpcSigner } from "ethers";
 import { CHAIN_ID, rpcUrl, walletConnectProjectId, chainParams } from "@/lib/config";
+import { readStoredWallet, writeStoredWallet } from "@/lib/wallet-storage";
 
 export interface Eip6963ProviderDetail {
   info: {
@@ -28,7 +29,9 @@ interface WalletContextValue {
   chainId: number | null;
   signer: JsonRpcSigner | null;
   connecting: boolean;
+  restoring: boolean;
   getProviders: () => Eip6963ProviderDetail[];
+  getSigner: () => Promise<JsonRpcSigner>;
   connectInjected: (detail: Eip6963ProviderDetail) => Promise<void>;
   connectWalletConnect: () => Promise<void>;
   disconnect: () => Promise<void>;
@@ -55,14 +58,20 @@ async function ensureChain(eip1193: Eip1193Provider) {
   }
 }
 
-async function bindProvider(eip1193: Eip1193Provider) {
+async function bindProvider(eip1193: Eip1193Provider, requestAccounts: boolean) {
   await ensureChain(eip1193);
   const browserProvider = new BrowserProvider(eip1193, CHAIN_ID);
-  await browserProvider.send("eth_requestAccounts", []);
+  if (requestAccounts) {
+    await browserProvider.send("eth_requestAccounts", []);
+  }
+  const accounts = (await browserProvider.send("eth_accounts", [])) as string[];
+  if (!accounts.length) {
+    throw new Error("NO_ACCOUNTS");
+  }
   const network = await browserProvider.getNetwork();
   const signer = await browserProvider.getSigner();
   const address = await signer.getAddress();
-  return { signer, address, chainId: Number(network.chainId) };
+  return { signer, address, chainId: Number(network.chainId), eip1193 };
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
@@ -70,8 +79,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [chainId, setChainId] = useState<number | null>(null);
   const [signer, setSigner] = useState<JsonRpcSigner | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const providersRef = useRef<Eip6963ProviderDetail[]>([]);
+  const activeProviderRef = useRef<Eip1193Provider | null>(null);
   const wcProviderRef = useRef<{ disconnect: () => Promise<void> } | null>(null);
+  const restoreStartedRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -115,19 +127,156 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const getProviders = useCallback(() => providersRef.current, []);
-
-  const connectInjected = useCallback(async (detail: Eip6963ProviderDetail) => {
-    setConnecting(true);
-    try {
-      const bound = await bindProvider(detail.provider);
+  const applySession = useCallback(
+    (bound: { signer: JsonRpcSigner; address: string; chainId: number }, eip1193: Eip1193Provider) => {
+      activeProviderRef.current = eip1193;
       setSigner(bound.signer);
       setAddress(bound.address);
       setChainId(bound.chainId);
-    } finally {
-      setConnecting(false);
-    }
+    },
+    []
+  );
+
+  const clearSession = useCallback(() => {
+    activeProviderRef.current = null;
+    setSigner(null);
+    setAddress(null);
+    setChainId(null);
+    writeStoredWallet(null);
   }, []);
+
+  useEffect(() => {
+    const eip1193 = activeProviderRef.current;
+    if (!eip1193?.on) return;
+
+    const onAccounts = async (accounts: unknown) => {
+      const list = accounts as string[];
+      if (!list?.length) {
+        clearSession();
+        return;
+      }
+      try {
+        const bound = await bindProvider(eip1193, false);
+        applySession(bound, bound.eip1193);
+      } catch {
+        setAddress(list[0]);
+      }
+    };
+
+    const onChain = () => {
+      window.location.reload();
+    };
+
+    eip1193.on("accountsChanged", onAccounts);
+    eip1193.on("chainChanged", onChain);
+    return () => {
+      eip1193.removeListener?.("accountsChanged", onAccounts);
+      eip1193.removeListener?.("chainChanged", onChain);
+    };
+  }, [address, clearSession]);
+
+  useEffect(() => {
+    if (restoreStartedRef.current) return;
+    restoreStartedRef.current = true;
+
+    const restore = async () => {
+      const stored = readStoredWallet();
+      if (!stored) return;
+
+      setRestoring(true);
+
+      const waitForProviders = async (maxMs = 1200) => {
+        const start = Date.now();
+        while (Date.now() - start < maxMs) {
+          if (providersRef.current.length > 0) return true;
+          if (window.ethereum) {
+            providersRef.current = [
+              {
+                info: {
+                  uuid: "injected-fallback",
+                  name: "Browser Wallet",
+                  icon: "",
+                  rdns: "injected",
+                },
+                provider: window.ethereum,
+              },
+            ];
+            return true;
+          }
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return false;
+      };
+
+      try {
+        if (stored.type === "injected") {
+          const ready = await waitForProviders();
+          if (!ready) return;
+
+          const detail = providersRef.current.find(
+            (p) => p.info.uuid === stored.uuid || p.info.rdns === stored.rdns
+          );
+          if (!detail) return;
+
+          const bound = await bindProvider(detail.provider, false);
+          applySession(bound, bound.eip1193);
+        } else if (stored.type === "walletconnect" && walletConnectProjectId) {
+          const { default: EthereumProvider } = await import("@walletconnect/ethereum-provider");
+          const provider = await EthereumProvider.init({
+            projectId: walletConnectProjectId,
+            chains: [CHAIN_ID],
+            optionalChains: [CHAIN_ID],
+            showQrModal: false,
+            rpcMap: { [CHAIN_ID]: rpcUrl },
+          });
+          const accounts = (await provider.enable()) as string[];
+          if (accounts.length) {
+            wcProviderRef.current = provider;
+            const bound = await bindProvider(provider as unknown as Eip1193Provider, false);
+            applySession(bound, bound.eip1193);
+          }
+        }
+      } catch {
+        writeStoredWallet(null);
+      } finally {
+        setRestoring(false);
+      }
+    };
+
+    restore();
+  }, [applySession]);
+
+  const getProviders = useCallback(() => providersRef.current, []);
+
+  const getSigner = useCallback(async () => {
+    const eip1193 = activeProviderRef.current;
+    if (!eip1193) throw new Error("Connect your wallet first");
+    await ensureChain(eip1193);
+    const browserProvider = new BrowserProvider(eip1193, CHAIN_ID);
+    const nextSigner = await browserProvider.getSigner();
+    const nextAddress = await nextSigner.getAddress();
+    setSigner(nextSigner);
+    setAddress(nextAddress);
+    return nextSigner;
+  }, []);
+
+  const connectInjected = useCallback(
+    async (detail: Eip6963ProviderDetail) => {
+      setConnecting(true);
+      try {
+        const bound = await bindProvider(detail.provider, true);
+        applySession(bound, bound.eip1193);
+        writeStoredWallet({
+          type: "injected",
+          rdns: detail.info.rdns,
+          uuid: detail.info.uuid,
+        });
+      } finally {
+        setConnecting(false);
+      }
+    },
+    [applySession]
+  );
 
   const connectWalletConnect = useCallback(async () => {
     if (!walletConnectProjectId) return;
@@ -143,24 +292,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       });
       await provider.enable();
       wcProviderRef.current = provider;
-      const bound = await bindProvider(provider as unknown as Eip1193Provider);
-      setSigner(bound.signer);
-      setAddress(bound.address);
-      setChainId(bound.chainId);
+      const bound = await bindProvider(provider as unknown as Eip1193Provider, false);
+      applySession(bound, bound.eip1193);
+      writeStoredWallet({ type: "walletconnect" });
     } finally {
       setConnecting(false);
     }
-  }, []);
+  }, [applySession]);
 
   const disconnect = useCallback(async () => {
     if (wcProviderRef.current) {
       await wcProviderRef.current.disconnect();
       wcProviderRef.current = null;
     }
-    setSigner(null);
-    setAddress(null);
-    setChainId(null);
-  }, []);
+    clearSession();
+  }, [clearSession]);
 
   const value = useMemo(
     () => ({
@@ -168,12 +314,25 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       chainId,
       signer,
       connecting,
+      restoring,
       getProviders,
+      getSigner,
       connectInjected,
       connectWalletConnect,
       disconnect,
     }),
-    [address, chainId, signer, connecting, getProviders, connectInjected, connectWalletConnect, disconnect]
+    [
+      address,
+      chainId,
+      signer,
+      connecting,
+      restoring,
+      getProviders,
+      getSigner,
+      connectInjected,
+      connectWalletConnect,
+      disconnect,
+    ]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

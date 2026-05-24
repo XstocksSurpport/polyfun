@@ -1,5 +1,9 @@
 export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "84532");
 
+export const SITE_SLOGAN = "The Prediction-Driven Launchpad";
+
+export const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL ?? "";
+
 export const EXPLORER_URL =
   CHAIN_ID === 8453 ? "https://basescan.org" : "https://sepolia.basescan.org";
 
@@ -7,10 +11,16 @@ export const rpcUrl =
   process.env.NEXT_PUBLIC_RPC_URL ??
   (CHAIN_ID === 8453 ? "https://mainnet.base.org" : "https://sepolia.base.org");
 
+/** Prefer server-only key for API/indexer routes (not bundled to the client). */
+export const serverRpcUrl = process.env.RPC_URL ?? rpcUrl;
+
 export const contracts = {
   launcher: process.env.NEXT_PUBLIC_LAUNCHER_ADDRESS as `0x${string}` | undefined,
   registry: process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}` | undefined,
   polyfun: process.env.NEXT_PUBLIC_POLYFUN_ADDRESS as `0x${string}` | undefined,
+  genesisMarket: process.env.NEXT_PUBLIC_GENESIS_MARKET_ADDRESS as `0x${string}` | undefined,
+  platformMarket: process.env.NEXT_PUBLIC_PLATFORM_MARKET_ADDRESS as `0x${string}` | undefined,
+  platformToken: process.env.NEXT_PUBLIC_PLATFORM_TOKEN_ADDRESS as `0x${string}` | undefined,
   launcherDeployBlock: BigInt(process.env.NEXT_PUBLIC_LAUNCHER_DEPLOY_BLOCK ?? "0"),
 };
 

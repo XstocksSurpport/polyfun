@@ -1,0 +1,34 @@
+{
+  "0xb27449f418a627b7ad4c86f04f6b72a7bb8ee2d2e17bc548ede36b9ab17994b6": {
+    "name": "TestCoin",
+    "symbol": "TEST",
+    "proposition": "Will it work?",
+    "description": "Will it work?",
+    "ipfsHash": "QmNsxa4npdKLepJTmxPrXD4VvAfzxKRgU4wAkMm6EELbwf",
+    "uri": "https://gateway.pinata.cloud/ipfs/QmNsxa4npdKLepJTmxPrXD4VvAfzxKRgU4wAkMm6EELbwf"
+  },
+  "0x84a1e616fb364f31637aaa72c5fe64886917d447ac39b95c35d43155a99155ba": {
+    "name": "test",
+    "symbol": "TEST",
+    "proposition": "test",
+    "description": "test",
+    "twitter": "none",
+    "telegram": "none",
+    "website": "none",
+    "image": "https://gateway.pinata.cloud/ipfs/QmQqmQ8dF6gfwY8NpV5c6RJWeAMart28waKMRwqXU8gPyT",
+    "ipfsHash": "QmdBqyhuUqNYtZCK1EFKPKcdAyg5JrBkg9QWvfYG7GQRXC",
+    "uri": "https://gateway.pinata.cloud/ipfs/QmdBqyhuUqNYtZCK1EFKPKcdAyg5JrBkg9QWvfYG7GQRXC"
+  },
+  "0xd7282216829bbeb048dfbd2391fd28fbe7b4568ea7e9a540d8211ce6701b5ffb": {
+    "name": "test",
+    "symbol": "TEST",
+    "proposition": "test",
+    "description": "test",
+    "twitter": "test",
+    "telegram": "test",
+    "website": "test",
+    "image": "https://gateway.pinata.cloud/ipfs/QmQqmQ8dF6gfwY8NpV5c6RJWeAMart28waKMRwqXU8gPyT",
+    "ipfsHash": "QmPgjAfxGvihssJFJ817vh2iBuaUF4SWM9dkgh2pSyBeEi",
+    "uri": "https://gateway.pinata.cloud/ipfs/QmPgjAfxGvihssJFJ817vh2iBuaUF4SWM9dkgh2pSyBeEi"
+  }
+}

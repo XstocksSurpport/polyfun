@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: "default" | "yes" | "no" | "pppp" | "outline";
+  variant?: "default" | "yes" | "no" | "ba5e" | "pppp" | "outline";
   className?: string;
 }
 
@@ -10,13 +10,13 @@ export function Badge({ children, variant = "default", className }: BadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium",
         {
-          "bg-neutral-100 text-neutral-600": variant === "default",
-          "bg-yes-muted text-yes": variant === "yes",
-          "bg-no-muted text-no": variant === "no",
-          "bg-neutral-900 text-white font-mono tracking-wide": variant === "pppp",
-          "border border-neutral-200 text-neutral-500": variant === "outline",
+          "bg-zinc-100 text-zinc-600": variant === "default",
+          "bg-green-50 text-[#16a34a]": variant === "yes",
+          "bg-red-50 text-[#dc2626]": variant === "no",
+          "bg-zinc-900 text-zinc-50": variant === "ba5e" || variant === "pppp",
+          "border border-zinc-200 text-zinc-600": variant === "outline",
         },
         className
       )}

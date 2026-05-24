@@ -1,53 +1,47 @@
-import { createPublicClient, getCreate2Address, http, keccak256, concat, pad, toHex } from "viem";
+import { createPublicClient, concat, encodePacked, getCreate2Address, http, keccak256, pad, toHex } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
-export const PPPP_SUFFIX = 0x70707070n;
+export const BA5E_SUFFIX = 0xba5en;
 
-const CLONE_PREFIX = "0x3d602d80600a3d3981f3363d573d3d3d363d73";
+const CLONE_PREFIX = "0x3d602d80600a3d3981f3363d3d373d3d3d363d73";
 const CLONE_SUFFIX = "0x5af43d82803e903d91602b57fd5bf3";
 
-export function cloneBytecodeHash(implementation) {
-  const bytecode = concat([
-    CLONE_PREFIX,
-    pad(implementation, { size: 20 }),
-    CLONE_SUFFIX,
-  ]);
-  return keccak256(bytecode);
+export function boundSalt(creator, rawSalt) {
+  return keccak256(encodePacked(["address", "bytes32"], [creator, rawSalt]));
 }
 
-export function predictTokenAddress(launcher, tokenImplementation, salt) {
+export function cloneBytecodeHash(implementation) {
+  return keccak256(
+    concat([CLONE_PREFIX, pad(implementation, { size: 20 }), CLONE_SUFFIX])
+  );
+}
+
+export function predictTokenAddress(launcher, creator, tokenImplementation, rawSalt) {
   return getCreate2Address({
     from: launcher,
-    salt,
+    salt: boundSalt(creator, rawSalt),
     bytecodeHash: cloneBytecodeHash(tokenImplementation),
   });
 }
 
-export function hasPpppSuffix(address) {
-  const lower = BigInt(address.toLowerCase());
-  return (lower & 0xffffffffn) === PPPP_SUFFIX;
+export function hasBa5eSuffix(address) {
+  return (BigInt(address.toLowerCase()) & 0xffffn) === BA5E_SUFFIX;
 }
 
-export function grindSalt(launcher, tokenImplementation, { start = 0n, onProgress } = {}) {
+export function grindSalt(launcher, creator, tokenImplementation, { start = 0, exclude = [] } = {}) {
   const hash = cloneBytecodeHash(tokenImplementation);
-  let i = start;
-
-  while (true) {
-    const salt = pad(toHex(i), { size: 32 });
+  const excluded = new Set(exclude.map((a) => a.toLowerCase()));
+  for (let i = start; ; i++) {
+    const rawSalt = pad(toHex(i), { size: 32 });
     const predicted = getCreate2Address({
       from: launcher,
-      salt,
+      salt: boundSalt(creator, rawSalt),
       bytecodeHash: hash,
     });
 
-    if (hasPpppSuffix(predicted)) {
-      return { salt, predictedAddress: predicted, attempts: i - start + 1n };
+    if (hasBa5eSuffix(predicted) && !excluded.has(predicted.toLowerCase())) {
+      return { salt: rawSalt, predictedAddress: predicted, attempts: i - start + 1 };
     }
-
-    if (onProgress && i % 500_000n === 0n) {
-      onProgress(i);
-    }
-    i += 1n;
   }
 }
 

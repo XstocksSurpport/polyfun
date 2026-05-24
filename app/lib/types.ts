@@ -2,7 +2,8 @@ import type { Hash } from "viem";
 
 export type Address = `0x${string}`;
 
-export type MarketStatus = "active" | "migrated" | "failed" | "cancelled" | "settling";
+/** Mirrors PolyfunMarket.MarketStatus: Active=0, Migrated=1, SettledNo=2 */
+export type MarketStatus = "active" | "migrated" | "failed";
 
 export type MigrationAdapter = "uniswap_v3" | "aerodrome_cl";
 
@@ -12,6 +13,9 @@ export interface TokenMetadata {
   description?: string;
   proposition?: string;
   image?: string;
+  twitter?: string;
+  telegram?: string;
+  website?: string;
 }
 
 export interface Market {
@@ -30,6 +34,9 @@ export interface Market {
   isOfficial: boolean;
   metadataHash?: Hash;
   imageUrl?: string;
+  twitter?: string;
+  telegram?: string;
+  website?: string;
   externalPool?: Address;
   migrationAdapter?: MigrationAdapter;
   launchBlock?: number;

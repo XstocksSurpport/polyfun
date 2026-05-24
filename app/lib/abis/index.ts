@@ -18,9 +18,26 @@ export const launcherAbi = [
   },
   {
     type: "function",
+    name: "tokenImplementation",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "marketImplementation",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
     name: "predictTokenAddress",
     stateMutability: "view",
-    inputs: [{ name: "salt", type: "bytes32" }],
+    inputs: [
+      { name: "creator", type: "address" },
+      { name: "rawSalt", type: "bytes32" },
+    ],
     outputs: [{ name: "token", type: "address" }],
   },
   {
@@ -213,6 +230,20 @@ export const marketAbi = [
     stateMutability: "view",
     inputs: [{ name: "account", type: "address" }],
     outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "yesClaimed",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "noClaimed",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
   },
   {
     type: "function",

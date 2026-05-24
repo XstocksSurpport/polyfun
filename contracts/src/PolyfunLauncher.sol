@@ -21,13 +21,13 @@ contract PolyfunLauncher {
     address public immutable marketImplementation;
     address public immutable migrationAdapter;
 
-    uint256 public defaultDuration = 1 days;
+    uint256 public defaultDuration = 2 days;
 
     event LaunchCreated(
         address indexed market,
         address indexed token,
         address indexed creator,
-        bytes32 salt
+        bytes32 rawSalt
     );
 
     constructor(
@@ -47,16 +47,18 @@ contract PolyfunLauncher {
         return PolyfunConstants.DEPLOY_FEE;
     }
 
-    function predictTokenAddress(bytes32 salt) external view returns (address) {
+    function predictTokenAddress(address creator, bytes32 rawSalt) external view returns (address) {
+        bytes32 finalSalt = PolyfunConstants.boundSalt(creator, rawSalt);
         return Create2Deployer.computeAddress(
-            salt,
+            finalSalt,
             Create2Deployer.cloneHash(tokenImplementation),
             address(this)
         );
     }
 
-    function predictMarketAddress(bytes32 salt) external view returns (address) {
-        bytes32 marketSalt = _marketSalt(salt);
+    function predictMarketAddress(address creator, bytes32 rawSalt) external view returns (address) {
+        bytes32 finalSalt = PolyfunConstants.boundSalt(creator, rawSalt);
+        bytes32 marketSalt = _marketSalt(finalSalt);
         return Create2Deployer.computeAddress(
             marketSalt,
             Create2Deployer.cloneHash(marketImplementation),
@@ -64,7 +66,7 @@ contract PolyfunLauncher {
         );
     }
 
-    function createLaunch(LaunchParams calldata params, bytes32 salt)
+    function createLaunch(LaunchParams calldata params, bytes32 rawSalt)
         external
         payable
         returns (address market, address token)
@@ -74,18 +76,14 @@ contract PolyfunLauncher {
 
         _sendFee(PolyfunConstants.DEPLOY_FEE);
 
-        bytes32 marketSalt = _marketSalt(salt);
-        market = Create2Deployer.deploy(
-            marketSalt,
-            Create2Deployer.cloneBytecode(marketImplementation)
-        );
+        bytes32 finalSalt = PolyfunConstants.boundSalt(msg.sender, rawSalt);
+        bytes32 marketSalt = _marketSalt(finalSalt);
 
-        token = Create2Deployer.deploy(
-            salt,
-            Create2Deployer.cloneBytecode(tokenImplementation)
-        );
+        market = Create2Deployer.deployClone(marketSalt, marketImplementation);
 
-        require(PolyfunConstants.hasPpppSuffix(token), "SuffixMismatch");
+        token = Create2Deployer.deployClone(finalSalt, tokenImplementation);
+
+        require(PolyfunConstants.hasBa5eSuffix(token), "SuffixMismatch");
 
         PolyfunToken(token).initialize(params.name, params.symbol, market);
         PolyfunMarket(payable(market)).initialize(
@@ -98,11 +96,11 @@ contract PolyfunLauncher {
         );
 
         registry.register(market, token, msg.sender, params.metadataHash);
-        emit LaunchCreated(market, token, msg.sender, salt);
+        emit LaunchCreated(market, token, msg.sender, rawSalt);
     }
 
-    function _marketSalt(bytes32 salt) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(salt, "POLYFUN_MARKET"));
+    function _marketSalt(bytes32 finalSalt) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(finalSalt, "POLYFUN_MARKET"));
     }
 
     function _sendFee(uint256 amount) internal {

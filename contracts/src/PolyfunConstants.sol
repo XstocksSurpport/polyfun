@@ -16,7 +16,8 @@ library PolyfunConstants {
     uint256 internal constant MIGRATION_FEE = 0.1 ether;
     uint16 internal constant SETTLEMENT_FEE_BPS = 200;
 
-    uint32 internal constant PPPP_SUFFIX = 0x70707070;
+    /// @dev Last 2 bytes of address must be 0xBA5E (hex suffix …ba5e).
+    uint16 internal constant BA5E_SUFFIX = 0xBA5E;
 
     address internal constant WETH = 0x4200000000000000000000000000000000000006;
     address internal constant V3_FACTORY = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
@@ -27,7 +28,11 @@ library PolyfunConstants {
     int24 internal constant V3_TICK_SPACING = 200;
     int24 internal constant V3_TICK_RANGE_WIDTH = 2000;
 
-    function hasPpppSuffix(address token) internal pure returns (bool) {
-        return uint32(uint160(token)) == PPPP_SUFFIX;
+    function hasBa5eSuffix(address token) internal pure returns (bool) {
+        return uint160(token) & 0xFFFF == BA5E_SUFFIX;
+    }
+
+    function boundSalt(address creator, bytes32 rawSalt) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(creator, rawSalt));
     }
 }

@@ -1,3 +1,5 @@
+export const MARKET_DURATION_HOURS = 48;
+
 export const FEE_RECEIVER = "0xFDC18444eca2FEfd44fA7516Ff994aAfC17C4fD5" as const;
 
 export const TOKEN_SUPPLY = {
