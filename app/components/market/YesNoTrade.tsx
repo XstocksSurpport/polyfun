@@ -17,7 +17,8 @@ import { buttonClassName } from "@/components/ui/Button";
 import { ConnectButton } from "@/components/layout/ConnectButton";
 import { ClaimActions } from "@/components/portfolio/ClaimActions";
 
-const GAS_RESERVE_ETH = 0.0005;
+/** Base L2 typical tx gas — keep reserve small so micro trades stay clickable. */
+const GAS_RESERVE_ETH = 0.00003;
 const BALANCE_PRESETS = [
   { label: "25%", ratio: 0.25 },
   { label: "50%", ratio: 0.5 },
@@ -44,7 +45,7 @@ export function YesNoTrade({
 }: YesNoTradeProps) {
   const { address, chainId, signer, getSigner } = useWallet();
   const queryClient = useQueryClient();
-  const [amount, setAmount] = useState(0.1);
+  const [amount, setAmount] = useState(0.01);
   const [ethBalanceWei, setEthBalanceWei] = useState<bigint | null>(null);
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [side, setSide] = useState<"yes" | "no">(initialSide);
@@ -143,9 +144,15 @@ export function YesNoTrade({
   const yesOdds = yesValueWei > 0n ? Number(totalPool) / Number(yesValueWei) : 1;
 
   const wrongNetwork = chainId !== null && chainId !== CHAIN_ID;
-  const insufficientBalance =
-    ethBalanceWei !== null && amountWei > 0n && ethBalanceWei < amountWei + BigInt(Math.round(GAS_RESERVE_ETH * 1e18));
-  const tradeBlocked = wrongNetwork || insufficientBalance || amountWei === 0n;
+  const gasReserveWei = BigInt(Math.round(GAS_RESERVE_ETH * 1e18));
+  const cannotAffordTrade =
+    ethBalanceWei !== null && amountWei > 0n && ethBalanceWei < amountWei;
+  const tightOnGas =
+    ethBalanceWei !== null &&
+    amountWei > 0n &&
+    !cannotAffordTrade &&
+    ethBalanceWei < amountWei + gasReserveWei;
+  const tradeBlocked = wrongNetwork || cannotAffordTrade || amountWei === 0n;
 
   const handleTrade = async (tradeSide: "yes" | "no") => {
     if (!address) return;
@@ -157,8 +164,12 @@ export function YesNoTrade({
       setTxError("Switch your wallet to Base network");
       return;
     }
-    if (insufficientBalance) {
-      setTxError("Insufficient ETH for this trade + gas");
+    if (cannotAffordTrade) {
+      setTxError("Insufficient ETH for this trade amount");
+      return;
+    }
+    if (ethBalanceWei !== null && ethBalanceWei < amountWei + gasReserveWei) {
+      setTxError("Low balance — leave a little ETH for gas or reduce amount");
       return;
     }
 
@@ -345,6 +356,12 @@ export function YesNoTrade({
       {txError && <p className="text-xs text-red-600">{txError}</p>}
       {wrongNetwork ? (
         <p className="text-xs text-amber-700">Switch wallet to Base to trade.</p>
+      ) : null}
+      {tightOnGas ? (
+        <p className="text-xs text-amber-700">Balance is tight — reduce amount if the tx fails.</p>
+      ) : null}
+      {cannotAffordTrade ? (
+        <p className="text-xs text-red-600">Insufficient ETH for this trade amount.</p>
       ) : null}
       {txHash && (
         <a
