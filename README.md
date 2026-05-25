@@ -2,6 +2,8 @@
 
 **The Prediction-Driven Launchpad** on Base — Pump.fun-style launches with Polymarket YES/NO markets.
 
+**Website:** [polyfun.wtf](https://polyfun.wtf) · **X:** [@polyfun_wtf](https://x.com/polyfun_wtf)
+
 | Doc | [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) (v0.7.0) |
 |-----|--------------------------------------------------------|
 
@@ -35,7 +37,7 @@ The Next.js app lives in **`app/`** (not the repo root). In Vercel:
 1. **Project → Settings → General → Root Directory** → set to **`app`** → Save  
 2. **Build Command** → leave **empty** (default `next build`)  
 3. **Install Command** → leave **empty** (default `npm install`)  
-4. **Environment Variables** → copy from `app/.env.local.example` (use production Base mainnet values)  
+4. **Environment Variables** → copy from `app/.env.local.example` (use production Base mainnet values). Set `NEXT_PUBLIC_SITE_URL=https://polyfun.wtf` and `NEXT_PUBLIC_X_URL=https://x.com/polyfun_wtf`.
 5. Redeploy
 
 If Root Directory is left at the repo root, the build runs `next` where it is not installed (`next: command not found`).

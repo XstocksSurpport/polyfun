@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DocsContractAddresses } from "@/components/docs/DocsContractAddresses";
+import { DocsOfficialLinks } from "@/components/docs/DocsOfficialLinks";
 import { launchProtection } from "@/lib/dex";
 import { FEES, FEE_RECEIVER, MARKET_DURATION_HOURS, MIGRATION, TOKEN_SUPPLY, formatSupplyMillions } from "@/lib/protocol";
 import { formatEth } from "@/lib/utils";
@@ -46,6 +47,8 @@ export default function DocsPage() {
           </a>
         ))}
       </nav>
+
+      <DocsOfficialLinks />
 
       <DocsContractAddresses />
 

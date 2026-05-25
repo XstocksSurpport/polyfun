@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { LinkButton } from "@/components/ui/Button";
-import { SITE_SLOGAN } from "@/lib/config";
+import { SITE_SLOGAN, socialLinks } from "@/lib/config";
+import { SiteSocialLinks } from "@/components/layout/SiteSocialLinks";
 import { PlatformMarketSection } from "@/components/platform/PlatformMarketSection";
 
 export function HomePageContent() {
@@ -10,10 +11,12 @@ export function HomePageContent() {
     <>
       <section className="flex flex-1 flex-col items-center justify-center px-4 pb-6 pt-4 text-center">
         <Link
-          href="/docs"
+          href={socialLinks.x}
+          target="_blank"
+          rel="noopener noreferrer"
           className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-zinc-200/60 bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600 shadow-inner transition-colors hover:text-zinc-900"
         >
-          Live on Base <span aria-hidden>→</span>
+          Live on Base · @polyfun_wtf <span aria-hidden>→</span>
         </Link>
 
         <h1 className="max-w-4xl text-4xl font-black tracking-tighter text-zinc-950 sm:text-5xl md:text-6xl">
@@ -39,6 +42,8 @@ export function HomePageContent() {
             New Project
           </LinkButton>
         </div>
+
+        <SiteSocialLinks className="mt-5" />
       </section>
 
       <PlatformMarketSection />

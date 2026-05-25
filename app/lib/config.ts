@@ -2,6 +2,11 @@ export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "84532");
 
 export const SITE_SLOGAN = "The Prediction-Driven Launchpad";
 
+export const SITE_NAME = "Polyfun";
+
+/** Canonical production URL — used for OG tags and share links. */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://polyfun.wtf").replace(/\/$/, "");
+
 export const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL ?? "";
 
 export const EXPLORER_URL =
@@ -26,9 +31,9 @@ export const contracts = {
 
 export const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
-/** Set in .env.local when ready — empty = placeholder (no navigation). */
+/** Official social profiles — empty env falls back to production defaults. */
 export const socialLinks = {
-  x: process.env.NEXT_PUBLIC_X_URL ?? "",
+  x: process.env.NEXT_PUBLIC_X_URL ?? "https://x.com/polyfun_wtf",
   telegram: process.env.NEXT_PUBLIC_TELEGRAM_URL ?? "",
 };
 

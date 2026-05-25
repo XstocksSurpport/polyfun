@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { githubUrl } from "@/lib/config";
 import { ConnectButton } from "./ConnectButton";
+import { SiteSocialLinks } from "./SiteSocialLinks";
 import { isNavActive, MAIN_NAV } from "./nav";
 
 function IconMenu({ className }: { className?: string }) {
@@ -75,6 +76,8 @@ export function SiteHeader() {
           </button>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <SiteSocialLinks variant="header" className="hidden sm:inline-flex" />
+
             {githubUrl ? (
               <a
                 href={githubUrl}

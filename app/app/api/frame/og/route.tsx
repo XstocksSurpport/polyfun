@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const yes = searchParams.get("yes") ?? "";
   const side = searchParams.get("side") ?? "";
 
-  const line2 = side ? `${side.toUpperCase()} · polyfun` : yes ? `YES ${yes}` : "polyfun";
+  const line2 = side ? `${side.toUpperCase()} · polyfun.wtf` : yes ? `YES ${yes}` : "polyfun.wtf";
 
   return new ImageResponse(
     (
