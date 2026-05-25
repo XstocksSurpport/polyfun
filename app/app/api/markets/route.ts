@@ -37,14 +37,21 @@ export async function GET(request: Request) {
       }
       return NextResponse.json(
         { market: serializeMarket(market) },
-        { headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" } }
+        {
+          headers: {
+            "Cache-Control":
+              searchParams.get("fresh") === "1"
+                ? "no-store"
+                : "public, s-maxage=5, stale-while-revalidate=15",
+          },
+        }
       );
     }
 
     const markets = await listMarkets();
     return NextResponse.json(
       { markets: markets.map(serializeMarket) },
-      { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } }
+      { headers: { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30" } }
     );
   } catch (error) {
     return apiErrorResponse(error, 500, { markets: [] });

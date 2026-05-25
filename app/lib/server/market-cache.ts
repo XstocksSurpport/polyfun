@@ -2,8 +2,8 @@ import "server-only";
 
 import type { Market } from "@/lib/types";
 
-const LIST_TTL_MS = 30_000;
-const MARKET_TTL_MS = 15_000;
+const LIST_TTL_MS = 10_000;
+const MARKET_TTL_MS = 5_000;
 
 let listCache: { markets: Market[]; at: number } | null = null;
 let listInflight: Promise<Market[]> | null = null;

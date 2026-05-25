@@ -79,6 +79,7 @@ contract PolyfunMarket {
         expiry = block.timestamp + _duration;
         migrationAdapterAddress = _migrationAdapter;
         status = MarketStatus.Active;
+        _statusLock = _NOT_ENTERED;
     }
 
     function buyYes(uint256 minSharesOut) external payable nonReentrant {
@@ -88,14 +89,15 @@ contract PolyfunMarket {
 
         uint256 fee = (msg.value * PolyfunConstants.TRADING_FEE_BPS) / 10_000;
         uint256 net = msg.value - fee;
-        _sendFee(fee);
 
-        (uint256 sharesOut, uint256 newYesRatioBps, bool willTrigger) = _quoteBuyYes(net);
+        (uint256 sharesOut,, bool willTrigger) = _quoteBuyYes(net);
         require(sharesOut >= minSharesOut, "Slippage");
 
         yesValue += net;
         yesShares[msg.sender] += sharesOut;
         totalYesShares += sharesOut;
+
+        _sendFee(fee);
 
         emit YesPurchased(msg.sender, msg.value, sharesOut);
 
@@ -111,7 +113,6 @@ contract PolyfunMarket {
 
         uint256 fee = (msg.value * PolyfunConstants.TRADING_FEE_BPS) / 10_000;
         uint256 net = msg.value - fee;
-        _sendFee(fee);
 
         (uint256 sharesOut,,) = _quoteBuyNo(net);
         require(sharesOut >= minSharesOut, "Slippage");
@@ -119,6 +120,8 @@ contract PolyfunMarket {
         noValue += net;
         noShares[msg.sender] += sharesOut;
         totalNoShares += sharesOut;
+
+        _sendFee(fee);
 
         emit NoPurchased(msg.sender, msg.value, sharesOut);
     }

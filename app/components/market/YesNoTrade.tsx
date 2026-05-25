@@ -6,9 +6,11 @@ import type { Market } from "@/lib/types";
 import { formatEth, cn } from "@/lib/utils";
 import { ethToWei, canTradeMarket } from "@/lib/market-utils";
 import { EXPLORER_URL } from "@/lib/config";
-import { MIGRATION, calcYesEthProgressBps } from "@/lib/protocol";
+import { MIGRATION, calcYesEthProgressBps, FEES } from "@/lib/protocol";
 import { marketAbi } from "@/lib/abis";
 import { getContract } from "@/lib/ethers/contract";
+import { readLivePoolState, readTradeQuote, type TradeQuote } from "@/lib/client/market-read";
+import { formatTradeError, minSharesWithSlippage } from "@/lib/trade-errors";
 import { useWallet } from "@/providers/WalletProvider";
 import { withTimeout } from "@/lib/async";
 import { buttonClassName } from "@/components/ui/Button";
@@ -39,7 +41,10 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
   const [pending, setPending] = useState(false);
   const [txError, setTxError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [quote, setQuote] = useState<[bigint, bigint, boolean] | null>(null);
+  const [quote, setQuote] = useState<TradeQuote | null>(null);
+  const [livePool, setLivePool] = useState<{ yesValueWei: bigint; noValueWei: bigint; yesRatioBps: number } | null>(
+    null
+  );
   const [position, setPosition] = useState<{
     yesShares: bigint;
     noShares: bigint;
@@ -47,8 +52,12 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
     noClaimed: boolean;
   } | null>(null);
   const [claimRefresh, setClaimRefresh] = useState(0);
-  const willTrigger = quote?.[2] === true;
+  const willTrigger = quote?.willTrigger === true;
   const tradeable = canTradeMarket(market);
+
+  const yesValueWei = livePool?.yesValueWei ?? market.yesValueWei;
+  const noValueWei = livePool?.noValueWei ?? market.noValueWei;
+  const yesRatioBps = livePool?.yesRatioBps ?? market.yesRatioBps;
 
   useEffect(() => {
     setSide(initialSide);
@@ -119,28 +128,37 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
   };
 
   const amountWei = ethToWei(amount);
-  const ethProgressBps = calcYesEthProgressBps(market.yesValueWei);
-  const atMigrationGate =
-    ethProgressBps >= MIGRATION.thresholdBps && market.yesRatioBps >= MIGRATION.thresholdBps;
-  const inMigrationZone = ethProgressBps >= 8500 || market.yesRatioBps >= 8500;
-  const totalPool = market.yesValueWei + market.noValueWei;
-  const yesOdds = market.yesValueWei > 0n ? Number(totalPool) / Number(market.yesValueWei) : 1;
+  const ethProgressBps = calcYesEthProgressBps(yesValueWei);
+  const atMigrationGate = ethProgressBps >= MIGRATION.thresholdBps && yesRatioBps >= MIGRATION.thresholdBps;
+  const inMigrationZone = ethProgressBps >= 8500 || yesRatioBps >= 8500;
+  const totalPool = yesValueWei + noValueWei;
+  const yesOdds = yesValueWei > 0n ? Number(totalPool) / Number(yesValueWei) : 1;
+
+  const refreshLivePool = useCallback(async () => {
+    if (!tradeable) return;
+    try {
+      const pool = await readLivePoolState(market.address as `0x${string}`);
+      setLivePool(pool);
+    } catch {
+      /* keep last snapshot */
+    }
+  }, [market.address, tradeable]);
+
+  useEffect(() => {
+    void refreshLivePool();
+    if (!tradeable) return;
+    const id = window.setInterval(() => void refreshLivePool(), 4_000);
+    return () => window.clearInterval(id);
+  }, [refreshLivePool, tradeable]);
 
   const loadQuote = useCallback(async () => {
-    if (!address || amountWei === 0n || !tradeable) {
+    if (amountWei === 0n || !tradeable) {
       setQuote(null);
       return;
     }
-    try {
-      const activeSigner = signer ?? (await getSigner());
-      const contract = getContract(market.address, marketAbi, activeSigner);
-      const fn = side === "yes" ? "quoteBuyYes" : "quoteBuyNo";
-      const result = await contract[fn](amountWei);
-      setQuote([result[0], result[1], result[2]]);
-    } catch {
-      setQuote(null);
-    }
-  }, [address, signer, getSigner, market.address, tradeable, amountWei, side]);
+    const q = await readTradeQuote(market.address as `0x${string}`, side, amountWei);
+    setQuote(q);
+  }, [market.address, tradeable, amountWei, side]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -161,18 +179,20 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
       const signer = await withTimeout(getSigner(), 15_000, "Wallet connection timed out");
       const contract = getContract(market.address, marketAbi, signer);
 
-      const qFn = tradeSide === "yes" ? "quoteBuyYes" : "quoteBuyNo";
-      const q = await contract[qFn](amountWei);
-      const minShares = q[0] as bigint;
-      const triggers = q[2] as boolean;
+      const q = await readTradeQuote(market.address as `0x${string}`, tradeSide, amountWei);
+      if (!q || q.sharesOut === 0n) {
+        throw new Error("Invalid quote — check amount");
+      }
+      const minShares = minSharesWithSlippage(q.sharesOut);
 
-      if (tradeSide === "yes" && triggers) {
+      if (tradeSide === "yes" && q.willTrigger) {
         setPending(false);
-        if (!window.confirm("Trigger Uniswap migration?")) return;
+        if (!window.confirm("This trade triggers Uniswap migration. Continue?")) return;
         setPending(true);
       }
 
       const fn = tradeSide === "yes" ? "buyYes" : "buyNo";
+      await contract[fn].staticCall(minShares, { value: amountWei });
       const tx = await withTimeout(
         contract[fn](minShares, { value: amountWei }),
         120_000,
@@ -180,12 +200,14 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
       );
       const receipt = await withTimeout(tx.wait(), 180_000, "Waiting for confirmation timed out");
       setTxHash((receipt as { hash?: string } | null)?.hash ?? tx.hash);
+      void fetch(`/api/markets?address=${market.address}&fresh=1`, { cache: "no-store" });
+      void refreshLivePool();
+      void loadQuote();
       void queryClient.invalidateQueries({ queryKey: ["trades", market.address] });
       void queryClient.invalidateQueries({ queryKey: ["market", market.address] });
       void queryClient.invalidateQueries({ queryKey: ["markets"] });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "TX_FAILED";
-      setTxError(msg.includes("rejected") ? "Transaction rejected in wallet" : msg);
+      setTxError(formatTradeError(e));
     } finally {
       setPending(false);
     }
@@ -276,7 +298,7 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
           </div>
           <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 px-3 py-3">
             <p className="text-meta">No pool</p>
-            <p className="mt-1 text-stat tabular-nums">{formatEth(market.noValueWei, 3)}</p>
+            <p className="mt-1 text-stat tabular-nums">{formatEth(noValueWei, 3)}</p>
           </div>
         </div>
       )}
@@ -337,11 +359,17 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
       </div>
 
       {quote && (
-        <p className="text-[10px] leading-relaxed text-zinc-400">
-          Est. {side === "yes" ? "Yes" : "No"} ≈ {formatEth(quote[0], 4)} · Yes{" "}
-          {(Number(quote[1]) / 100).toFixed(1)}%
-          {willTrigger && side === "yes" ? " · migration" : ""}
-        </p>
+        <div className="space-y-0.5 text-[10px] leading-relaxed text-zinc-500">
+          <p>
+            Net pool · {formatEth(quote.netEthWei, 4)} ETH (fee {FEES.tradingBps / 100}% ·{" "}
+            {formatEth(quote.feeWei, 5)} ETH)
+          </p>
+          <p>
+            {side === "yes" ? "Yes" : "No"} shares ≈ {formatEth(quote.sharesOut, 4)} · YES{" "}
+            {(yesRatioBps / 100).toFixed(1)}% → {(quote.newYesRatioBps / 100).toFixed(1)}%
+            {willTrigger && side === "yes" ? " · triggers migration" : ""}
+          </p>
+        </div>
       )}
 
       {txError && <p className="text-xs text-red-600">{txError}</p>}

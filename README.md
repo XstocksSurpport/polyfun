@@ -64,6 +64,18 @@ polyfun/
 
 Fees → `0xFDC18444eca2FEfd44fA7516Ff994aAfC17C4fD5`
 
+### Mainnet hotfix (clone reentrancy guard)
+
+Markets deployed before this fix cannot trade (`Reentrancy` revert). Redeploy launcher + platform market:
+
+```bash
+cp contracts/.env.example contracts/.env   # PRIVATE_KEY + BASE_RPC_URL
+npm run deploy:launcher-v3
+FORCE_PLATFORM=1 npm run bootstrap:platform
+```
+
+Update Vercel env: `NEXT_PUBLIC_LAUNCHER_ADDRESS`, `NEXT_PUBLIC_REGISTRY_ADDRESS`, `NEXT_PUBLIC_PLATFORM_MARKET_ADDRESS`, `NEXT_PUBLIC_PLATFORM_TOKEN_ADDRESS`.
+
 ## Phase 2 (documented, not yet shipped)
 
 - `POLYFUN.sol`, `PolyfunConfig`, Aerodrome adapter

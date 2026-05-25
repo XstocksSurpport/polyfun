@@ -140,6 +140,12 @@ contract MigrationTest is Test {
         assertEq(token, predicted);
         assertTrue(registry.isOfficialMarket(launchedMarket));
         assertEq(PolyfunToken(token).market(), launchedMarket);
+
+        vm.deal(buyer, 1 ether);
+        vm.prank(buyer);
+        PolyfunMarket(payable(launchedMarket)).buyYes{value: 0.1 ether}(0);
+        assertEq(PolyfunMarket(payable(launchedMarket)).yesValue(), (0.1 ether * 9900) / 10_000);
+        assertGt(PolyfunMarket(payable(launchedMarket)).yesShares(buyer), 0);
     }
 
     function test_createLaunch_exactDeployFee() public {

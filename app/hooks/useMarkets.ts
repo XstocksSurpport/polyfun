@@ -25,16 +25,18 @@ export function useMarkets() {
         configured: res.status !== 503,
       };
     },
-    refetchInterval: (query) => (query.state.data?.configured ? 60_000 : false),
+    refetchInterval: (query) => (query.state.data?.configured ? 30_000 : false),
     refetchOnWindowFocus: true,
   });
 }
 
-export function useMarket(address: string) {
+export function useMarket(address: string, options?: { live?: boolean }) {
+  const live = options?.live ?? false;
   return useQuery({
     queryKey: ["market", address],
     queryFn: async () => {
-      const res = await fetch(`/api/markets?address=${address}`);
+      const fresh = live ? "&fresh=1" : "";
+      const res = await fetch(`/api/markets?address=${address}${fresh}`, { cache: "no-store" });
       const data = await res.json();
       if (res.status === 404) return { market: null, error: "NOT_FOUND" };
       if (!res.ok) return { market: null, error: data.error ?? "LOAD_FAILED" };
@@ -43,11 +45,12 @@ export function useMarket(address: string) {
     enabled: Boolean(address),
     refetchInterval: (query) => {
       const market = query.state.data?.market;
-      if (!market || market.status !== "active") return 30_000;
+      if (!market || market.status !== "active") return live ? 10_000 : 30_000;
       const ethProgress = calcYesEthProgressBps(market.yesValueWei);
-      if (ethProgress >= 8500 || market.yesRatioBps >= 8500) return 5_000;
-      return 30_000;
+      if (live || ethProgress >= 8500 || market.yesRatioBps >= 8500) return 4_000;
+      return 12_000;
     },
+    refetchOnWindowFocus: true,
   });
 }
 

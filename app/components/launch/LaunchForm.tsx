@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { JsonRpcProvider } from "ethers";
-import { createPublicClient, http } from "viem";
-import { base, baseSepolia } from "viem/chains";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Interface, type ContractTransactionReceipt } from "ethers";
 import { contracts, getConfigError, CHAIN_ID, rpcUrl } from "@/lib/config";
 import { launcherAbi } from "@/lib/abis";
 import { getContract } from "@/lib/ethers/contract";
+import { getPublicClient } from "@/lib/client/public-client";
 import { useWallet } from "@/providers/WalletProvider";
 import { FEES } from "@/lib/protocol";
 import { formatEth } from "@/lib/utils";
@@ -38,16 +37,16 @@ function formatLaunchError(error: unknown): string {
     if (msg.includes("DeployFee")) {
       return "Incorrect deploy fee amount";
     }
+    if (/Reentrancy|estimateGas|CALL_EXCEPTION/i.test(msg)) {
+      return "Launch simulation failed — check fee and try again";
+    }
     return "Launch failed — please try again";
   }
   return "Launch failed";
 }
 
-function getPublicClient() {
-  return createPublicClient({
-    chain: CHAIN_ID === 8453 ? base : baseSepolia,
-    transport: http(rpcUrl),
-  });
+function getLaunchPublicClient() {
+  return getPublicClient();
 }
 
 export function LaunchForm() {
@@ -87,7 +86,7 @@ export function LaunchForm() {
 
   const grindSaltForUser = useCallback(async () => {
     if (!address || !contracts.launcher) return null;
-    const client = getPublicClient();
+    const client = getLaunchPublicClient();
     const readContract = getContract(contracts.launcher, launcherAbi, new JsonRpcProvider(rpcUrl, CHAIN_ID));
     const [tokenImplementation, marketImplementation] = await Promise.all([
       withTimeout(readContract.tokenImplementation(), 15_000, "Launcher RPC timeout") as Promise<`0x${string}`>,
@@ -157,7 +156,7 @@ export function LaunchForm() {
         launchSalt = result.rawSalt;
         setSalt(result.rawSalt);
       } else {
-        const client = getPublicClient();
+        const client = getLaunchPublicClient();
         const readContract = getContract(
           contracts.launcher,
           launcherAbi,
@@ -205,19 +204,26 @@ export function LaunchForm() {
 
       setLaunchStep("wallet");
       const fee = creationFee ?? FEES.deployWei;
+      const params = {
+        name: name.trim(),
+        symbol: symbol.trim().toUpperCase(),
+        metadataHash: meta.metadataHash as `0x${string}`,
+        initialLiquidity: 0n,
+        burnPolyfun,
+      };
+
+      await getLaunchPublicClient().simulateContract({
+        address: contracts.launcher,
+        abi: launcherAbi,
+        functionName: "createLaunch",
+        args: [params, launchSalt as `0x${string}`],
+        account: address as `0x${string}`,
+        value: fee,
+      });
+
       const contract = getContract(contracts.launcher, launcherAbi, activeSigner);
       const tx = await withTimeout(
-        contract.createLaunch(
-          {
-            name: name.trim(),
-            symbol: symbol.trim().toUpperCase(),
-            metadataHash: meta.metadataHash,
-            initialLiquidity: 0n,
-            burnPolyfun,
-          },
-          launchSalt,
-          { value: fee }
-        ),
+        contract.createLaunch(params, launchSalt, { value: fee }),
         120_000,
         "Confirm transaction in wallet"
       );

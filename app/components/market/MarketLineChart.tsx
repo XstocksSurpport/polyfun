@@ -113,7 +113,7 @@ export function MarketLineChart({
       <div className={cn("flex items-center justify-between gap-2", compact ? "mb-1" : "mb-2")}>
         <div className="flex min-w-0 items-baseline gap-2">
           {!compact && (
-            <p className="text-eyebrow tracking-wider text-zinc-400">YES % · K-line</p>
+            <p className="text-eyebrow tracking-wider text-zinc-400">YES %</p>
           )}
           {live ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700">

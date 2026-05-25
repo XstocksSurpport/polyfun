@@ -17,7 +17,7 @@ import { buttonClassName } from "@/components/ui/Button";
 
 export function PlatformMarketSection() {
   const address = contracts.platformMarket;
-  const { data, isLoading, error } = useMarket(address ?? "");
+  const { data, isLoading, error } = useMarket(address ?? "", { live: true });
   const marketStatus = data?.market?.status;
   const { data: tradesData } = useMarketTrades(address ?? "", {
     live: marketStatus === "active",

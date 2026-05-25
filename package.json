@@ -14,6 +14,7 @@
     "bootstrap:genesis": "node scripts/bootstrap-genesis-market.mjs",
     "bootstrap:platform": "node scripts/bootstrap-platform-market.mjs",
     "deploy:launcher-v2": "node scripts/deploy-launcher-v2.mjs",
+    "deploy:launcher-v3": "node scripts/deploy-launcher-v3.mjs",
     "deploy:platform": "node scripts/deploy-platform-token.mjs",
     "deploy:sepolia": "node scripts/deploy-sepolia.mjs",
     "vanity:install": "npm install --prefix vanity",
