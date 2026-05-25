@@ -8,7 +8,7 @@ import { CopyAddressButton } from "@/components/ui/CopyAddressButton";
 import { SocialIconLinks } from "./SocialIconLinks";
 import { Countdown } from "./Countdown";
 import { formatMarketProposition } from "@/lib/market-utils";
-import { isPlatformMarket } from "@/lib/platform";
+import { isPlatformMarket, resolveMarketSocialLinks } from "@/lib/platform";
 import { useMarketTrades } from "@/hooks/useMarkets";
 import { MarketLineChart } from "./MarketLineChart";
 import { YesNoTrade } from "./YesNoTrade";
@@ -53,6 +53,7 @@ export function MarketTradeModal({ market, side, onClose }: MarketTradeModalProp
 
   const title = formatMarketProposition(market.symbol);
   const isPlatform = isPlatformMarket(market.address);
+  const social = resolveMarketSocialLinks(market);
 
   return createPortal(
     <div
@@ -77,9 +78,9 @@ export function MarketTradeModal({ market, side, onClose }: MarketTradeModalProp
               {isPlatform ? <PlatformVerifiedBadge compact /> : null}
               <CopyAddressButton address={market.token} />
               <SocialIconLinks
-                twitter={market.twitter}
-                telegram={market.telegram}
-                website={market.website}
+                twitter={social.twitter}
+                telegram={social.telegram}
+                website={social.website}
               />
               <StatusBadge status={market.status} />
               {market.status === "active" ? (

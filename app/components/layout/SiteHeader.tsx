@@ -76,7 +76,7 @@ export function SiteHeader() {
           </button>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            <SiteSocialLinks variant="header" className="hidden sm:inline-flex" />
+            <SiteSocialLinks className="hidden sm:inline-flex" />
 
             {githubUrl ? (
               <a

@@ -6,9 +6,11 @@ import { contracts, EXPLORER_URL } from "@/lib/config";
 import { useMarket, useMarketTrades } from "@/hooks/useMarkets";
 import { formatMarketProposition, canTradeMarket } from "@/lib/market-utils";
 import { formatEth } from "@/lib/utils";
+import { resolveMarketSocialLinks } from "@/lib/platform";
 import { PlatformVerifiedBadge } from "@/components/ui/PlatformVerifiedBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CopyAddressButton } from "@/components/ui/CopyAddressButton";
+import { SocialIconLinks } from "@/components/market/SocialIconLinks";
 import { Countdown } from "@/components/market/Countdown";
 import { MarketLineChart } from "@/components/market/MarketLineChart";
 import { YesNoTrade } from "@/components/market/YesNoTrade";
@@ -87,6 +89,7 @@ export function PlatformMarketSection() {
   const totalPool = market.yesValueWei + market.noValueWei;
   const canTrade = canTradeMarket(market);
   const trades = tradesData?.trades ?? [];
+  const social = resolveMarketSocialLinks(market);
 
   return (
     <>
@@ -107,6 +110,11 @@ export function PlatformMarketSection() {
                     ${market.symbol}
                   </h2>
                   <CopyAddressButton address={market.token} />
+                  <SocialIconLinks
+                    twitter={social.twitter}
+                    telegram={social.telegram}
+                    website={social.website}
+                  />
                   <StatusBadge status={market.status} />
                   {market.status === "active" ? (
                     <Countdown expiryTs={market.expiryTs} compact label="left" />

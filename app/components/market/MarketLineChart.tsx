@@ -87,7 +87,7 @@ export function MarketLineChart({
   fallbackRatioBps = 5000,
   className,
   compact = false,
-  live = false,
+  live: _live = false,
 }: MarketLineChartProps) {
   const [timeframe, setTimeframe] = useState<ChartTimeframe>("24h");
 
@@ -115,12 +115,6 @@ export function MarketLineChart({
           {!compact && (
             <p className="text-eyebrow tracking-wider text-zinc-400">YES %</p>
           )}
-          {live ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              Live
-            </span>
-          ) : null}
           <p className={cn("font-semibold tabular-nums text-zinc-950", compact ? "text-sm" : "text-base")}>
             {last?.c.toFixed(1) ?? (fallbackRatioBps / 100).toFixed(1)}%
           </p>
