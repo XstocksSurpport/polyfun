@@ -13,8 +13,12 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
   reactStrictMode: true,
+  experimental: {
+    optimizePackageImports: ["ethers", "viem", "@tanstack/react-query"],
+  },
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    removeConsole:
+      process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
   async headers() {
     return [
@@ -22,16 +26,50 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      {
+        source: "/:path*.js",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
     ];
   },
-  webpack: (config, { dev }) => {
+  webpack: (config, { dev, isServer }) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     if (!dev) {
       config.optimization = {
         ...config.optimization,
         moduleIds: "deterministic",
+        chunkIds: "deterministic",
         minimize: true,
       };
+
+      if (!isServer) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const WebpackObfuscator = require("webpack-obfuscator");
+          config.plugins.push(
+            new WebpackObfuscator(
+              {
+                compact: true,
+                controlFlowFlattening: false,
+                deadCodeInjection: false,
+                debugProtection: false,
+                disableConsoleOutput: true,
+                identifierNamesGenerator: "hexadecimal",
+                renameGlobals: false,
+                rotateStringArray: true,
+                selfDefending: false,
+                stringArray: true,
+                stringArrayThreshold: 0.4,
+                transformObjectKeys: false,
+                unicodeEscapeSequence: false,
+              },
+              ["**/node_modules/**", "**/webpack/**", "**/framework/**"]
+            )
+          );
+        } catch {
+          /* webpack-obfuscator optional at build time */
+        }
+      }
     }
     return config;
   },

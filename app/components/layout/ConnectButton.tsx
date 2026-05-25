@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useWallet, type Eip6963ProviderDetail } from "@/providers/WalletProvider";
 import { walletConnectProjectId } from "@/lib/config";
+import { formatWalletError } from "@/lib/trade-errors";
 import { truncateAddress } from "@/lib/utils";
 import { buttonClassName } from "@/components/ui/Button";
 
@@ -30,6 +31,7 @@ function WalletModal({
   onClose,
   connecting,
   providers,
+  connectError,
   connectInjected,
   connectWalletConnect,
 }: {
@@ -37,6 +39,7 @@ function WalletModal({
   onClose: () => void;
   connecting: boolean;
   providers: Eip6963ProviderDetail[];
+  connectError: string | null;
   connectInjected: (detail: Eip6963ProviderDetail) => Promise<void>;
   connectWalletConnect: () => Promise<void>;
 }) {
@@ -91,6 +94,9 @@ function WalletModal({
         </div>
 
         <div className="overflow-y-auto px-2 py-2">
+          {connectError ? (
+            <p className="mx-2 mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{connectError}</p>
+          ) : null}
           {wallets.length === 0 && !walletConnectProjectId ? (
             <p className="px-3 py-6 text-center text-meta">Install MetaMask, then refresh.</p>
           ) : null}
@@ -100,10 +106,7 @@ function WalletModal({
                 <button
                   type="button"
                   disabled={connecting}
-                  onClick={async () => {
-                    await connectInjected(p);
-                    onClose();
-                  }}
+                  onClick={() => void connectInjected(p)}
                   className="flex min-h-10 w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-zinc-50 disabled:opacity-40"
                 >
                   {p.info.icon ? (
@@ -123,10 +126,7 @@ function WalletModal({
                 <button
                   type="button"
                   disabled={connecting}
-                  onClick={async () => {
-                    await connectWalletConnect();
-                    onClose();
-                  }}
+                  onClick={() => void connectWalletConnect()}
                   className="flex min-h-10 w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-zinc-50 disabled:opacity-40"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-semibold">
@@ -148,8 +148,48 @@ function ConnectButtonInner() {
   const { address, connecting, restoring, getProviders, connectInjected, connectWalletConnect } =
     useWallet();
   const [open, setOpen] = useState(false);
+  const [providers, setProviders] = useState<Eip6963ProviderDetail[]>([]);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    setOpen(false);
+    setConnectError(null);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const refresh = () => setProviders(getProviders());
+    refresh();
+    const id = window.setInterval(refresh, 250);
+    const stop = window.setTimeout(() => window.clearInterval(id), 2500);
+    return () => {
+      window.clearInterval(id);
+      window.clearTimeout(stop);
+    };
+  }, [open, getProviders]);
+
+  const handleInjected = useCallback(
+    async (detail: Eip6963ProviderDetail) => {
+      setConnectError(null);
+      try {
+        await connectInjected(detail);
+        close();
+      } catch (e) {
+        setConnectError(formatWalletError(e));
+      }
+    },
+    [close, connectInjected]
+  );
+
+  const handleWalletConnect = useCallback(async () => {
+    setConnectError(null);
+    try {
+      await connectWalletConnect();
+      close();
+    } catch (e) {
+      setConnectError(formatWalletError(e));
+    }
+  }, [close, connectWalletConnect]);
 
   if (address) {
     return (
@@ -179,9 +219,10 @@ function ConnectButtonInner() {
         open={open}
         onClose={close}
         connecting={connecting}
-        providers={open ? getProviders() : []}
-        connectInjected={connectInjected}
-        connectWalletConnect={connectWalletConnect}
+        providers={providers}
+        connectError={connectError}
+        connectInjected={handleInjected}
+        connectWalletConnect={handleWalletConnect}
       />
     </>
   );

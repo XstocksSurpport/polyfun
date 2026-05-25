@@ -103,7 +103,8 @@ export function MarketLineChart({
     if (trades.length === 0) {
       return flatCandle(yesValueWei, noValueWei, timeframe);
     }
-    return tradesToCandles(trades, timeframe, yesValueWei, noValueWei);
+    const built = tradesToCandles(trades, timeframe, yesValueWei, noValueWei);
+    return built.length > 0 ? built : flatCandle(yesValueWei, noValueWei, timeframe);
   }, [trades, timeframe, yesValueWei, noValueWei]);
 
   const width = 320;

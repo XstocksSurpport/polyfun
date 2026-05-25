@@ -159,12 +159,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         const bound = await bindProvider(eip1193, false);
         applySession(bound, bound.eip1193);
       } catch {
-        setAddress(list[0]);
+        clearSession();
       }
     };
 
-    const onChain = () => {
-      window.location.reload();
+    const onChain = async () => {
+      try {
+        const bound = await bindProvider(eip1193, false);
+        applySession(bound, bound.eip1193);
+      } catch {
+        setChainId(null);
+      }
     };
 
     eip1193.on("accountsChanged", onAccounts);
@@ -173,7 +178,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       eip1193.removeListener?.("accountsChanged", onAccounts);
       eip1193.removeListener?.("chainChanged", onChain);
     };
-  }, [address, clearSession]);
+  }, [address, applySession, clearSession]);
 
   useEffect(() => {
     if (restoreStartedRef.current) return;

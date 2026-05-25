@@ -32,8 +32,14 @@ export function weiToEth(wei: bigint): number {
   return Number(wei) / 1e18;
 }
 
+/** Parse ETH amount without float drift (max 18 decimals). */
 export function ethToWei(eth: number): bigint {
-  return BigInt(Math.round(eth * 1e18));
+  if (!Number.isFinite(eth) || eth <= 0) return 0n;
+  const raw = eth.toFixed(18);
+  const [whole, frac = ""] = raw.split(".");
+  const weiFrac = (frac + "0".repeat(18)).slice(0, 18);
+  const combined = `${whole}${weiFrac}`.replace(/^0+(?=\d)/, "");
+  return combined ? BigInt(combined) : 0n;
 }
 
 /** Canonical market question — only `$SYMBOL` varies. */

@@ -14,39 +14,11 @@ import { FEES } from "@/lib/protocol";
 import { formatEth } from "@/lib/utils";
 import { formatMarketProposition } from "@/lib/market-utils";
 import { withTimeout } from "@/lib/async";
+import { formatLaunchError } from "@/lib/trade-errors";
 import { grindBa5eSaltAvailable, validateSaltAvailable } from "@/lib/vanity/ba5e";
 import { SetupBlock } from "@/components/ui/State";
 
 type LaunchStep = "idle" | "salt" | "metadata" | "wallet" | "confirming";
-
-function formatLaunchError(error: unknown): string {
-  if (error instanceof Error) {
-    const msg = error.message;
-    if (msg.includes("USER_REJECTED") || msg.includes("user rejected") || msg.includes("ACTION_REJECTED")) {
-      return "Transaction rejected";
-    }
-    if (msg.includes("insufficient funds")) {
-      return "Insufficient ETH for deploy fee + gas";
-    }
-    if (msg.includes("Create2Failed")) {
-      return "Address already taken — generating a new salt, please try again";
-    }
-    if (msg.includes("SuffixMismatch")) {
-      return "Invalid token address suffix — please retry";
-    }
-    if (msg.includes("DeployFee")) {
-      return "Incorrect deploy fee amount";
-    }
-    if (/METADATA|PINATA|NAME_SYMBOL|IMAGE_|RATE_LIMITED/i.test(msg)) {
-      return msg.length > 120 ? `${msg.slice(0, 120)}…` : msg;
-    }
-    if (/Reentrancy|estimateGas|CALL_EXCEPTION/i.test(msg)) {
-      return "Launch simulation failed — check fee and try again";
-    }
-    return "Launch failed — please try again";
-  }
-  return "Launch failed";
-}
 
 function getLaunchPublicClient() {
   return getPublicClient();
@@ -55,7 +27,7 @@ function getLaunchPublicClient() {
 export function LaunchForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { address, getSigner } = useWallet();
+  const { address, chainId, getSigner } = useWallet();
   const configError = getConfigError();
 
   const [name, setName] = useState("");
@@ -142,6 +114,10 @@ export function LaunchForm() {
     }
     if (!contracts.launcher) {
       setLaunchError("Launcher not configured");
+      return;
+    }
+    if (chainId !== null && chainId !== CHAIN_ID) {
+      setLaunchError("Switch your wallet to Base network");
       return;
     }
 

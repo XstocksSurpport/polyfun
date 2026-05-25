@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Market } from "@/lib/types";
 import { formatEth, formatEthVol, formatMigrationPercent, cn } from "@/lib/utils";
 import { ethToWei, canTradeMarket } from "@/lib/market-utils";
-import { EXPLORER_URL } from "@/lib/config";
+import { EXPLORER_URL, CHAIN_ID } from "@/lib/config";
 import { MIGRATION, calcMigrationProgressBps } from "@/lib/protocol";
 import { marketAbi } from "@/lib/abis";
 import { getContract } from "@/lib/ethers/contract";
@@ -42,7 +42,7 @@ export function YesNoTrade({
   noValueWei: noValueProp,
   onTradeSuccess,
 }: YesNoTradeProps) {
-  const { address, signer, getSigner } = useWallet();
+  const { address, chainId, signer, getSigner } = useWallet();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState(0.1);
   const [ethBalanceWei, setEthBalanceWei] = useState<bigint | null>(null);
@@ -50,6 +50,7 @@ export function YesNoTrade({
   const [side, setSide] = useState<"yes" | "no">(initialSide);
   const [pending, setPending] = useState(false);
   const [txError, setTxError] = useState<string | null>(null);
+  const [quoteWarning, setQuoteWarning] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [position, setPosition] = useState<{
     yesShares: bigint;
@@ -141,11 +142,29 @@ export function YesNoTrade({
   const totalPool = yesValueWei + noValueWei;
   const yesOdds = yesValueWei > 0n ? Number(totalPool) / Number(yesValueWei) : 1;
 
+  const wrongNetwork = chainId !== null && chainId !== CHAIN_ID;
+  const insufficientBalance =
+    ethBalanceWei !== null && amountWei > 0n && ethBalanceWei < amountWei + BigInt(Math.round(GAS_RESERVE_ETH * 1e18));
+  const tradeBlocked = wrongNetwork || insufficientBalance || amountWei === 0n;
+
   const handleTrade = async (tradeSide: "yes" | "no") => {
     if (!address) return;
+    if (amountWei <= 0n) {
+      setTxError("Enter an amount greater than 0");
+      return;
+    }
+    if (wrongNetwork) {
+      setTxError("Switch your wallet to Base network");
+      return;
+    }
+    if (insufficientBalance) {
+      setTxError("Insufficient ETH for this trade + gas");
+      return;
+    }
 
     setPending(true);
     setTxError(null);
+    setQuoteWarning(null);
     setTxHash(null);
     setSide(tradeSide);
 
@@ -154,13 +173,14 @@ export function YesNoTrade({
         withTimeout(getSigner(), 15_000, "Wallet connection timed out"),
         prepareTrade(market.address as `0x${string}`, tradeSide, amountWei),
       ]);
-      const { minShares, willTrigger } = prepared;
+      const { minShares, willTrigger, quoted } = prepared;
+      if (!quoted) {
+        setQuoteWarning("Using estimated quote — retry if the trade fails");
+      }
       const contract = getContract(market.address, marketAbi, signer);
 
       if (tradeSide === "yes" && willTrigger) {
-        setPending(false);
         if (!window.confirm("This trade triggers Uniswap migration. Continue?")) return;
-        setPending(true);
       }
 
       const fn = tradeSide === "yes" ? "buyYes" : "buyNo";
@@ -321,7 +341,11 @@ export function YesNoTrade({
         </div>
       </div>
 
+      {quoteWarning ? <p className="text-xs text-amber-700">{quoteWarning}</p> : null}
       {txError && <p className="text-xs text-red-600">{txError}</p>}
+      {wrongNetwork ? (
+        <p className="text-xs text-amber-700">Switch wallet to Base to trade.</p>
+      ) : null}
       {txHash && (
         <a
           className="block text-xs font-medium text-zinc-950 underline"
@@ -336,7 +360,7 @@ export function YesNoTrade({
       <div className="grid grid-cols-2 gap-1.5">
         <button
           type="button"
-          disabled={pending || amountWei === 0n}
+          disabled={pending || tradeBlocked}
           onClick={() => handleTrade("yes")}
           className={cn(
             "flex w-full items-center justify-center rounded-lg bg-zinc-950 text-sm font-semibold text-white shadow-sm transition-all hover:bg-zinc-900 disabled:opacity-40",
@@ -356,7 +380,7 @@ export function YesNoTrade({
         </button>
         <button
           type="button"
-          disabled={pending || amountWei === 0n || noBlocked}
+          disabled={pending || tradeBlocked || noBlocked}
           onClick={() => handleTrade("no")}
           className={cn(
             "flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-zinc-800 shadow-sm transition-all hover:bg-zinc-50 disabled:opacity-40",

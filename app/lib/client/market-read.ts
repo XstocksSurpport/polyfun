@@ -27,8 +27,12 @@ export async function readLivePoolState(marketAddress: Address): Promise<LivePoo
     ],
   });
 
-  const yes = yesValueWei.status === "success" ? yesValueWei.result : 0n;
-  const no = noValueWei.status === "success" ? noValueWei.result : 0n;
+  if (yesValueWei.status !== "success" || noValueWei.status !== "success") {
+    throw new Error("Pool read failed");
+  }
+
+  const yes = yesValueWei.result;
+  const no = noValueWei.result;
 
   return {
     yesValueWei: yes,
