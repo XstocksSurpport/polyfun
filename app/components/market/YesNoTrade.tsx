@@ -6,7 +6,7 @@ import type { Market } from "@/lib/types";
 import { formatEth, cn } from "@/lib/utils";
 import { ethToWei, canTradeMarket } from "@/lib/market-utils";
 import { EXPLORER_URL } from "@/lib/config";
-import { MIGRATION, calcYesEthProgressBps } from "@/lib/protocol";
+import { MIGRATION, calcMigrationProgressBps } from "@/lib/protocol";
 import { marketAbi } from "@/lib/abis";
 import { getContract } from "@/lib/ethers/contract";
 import { readLivePoolState, readTradeQuote } from "@/lib/client/market-read";
@@ -126,8 +126,8 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
   };
 
   const amountWei = ethToWei(amount);
-  const ethProgressBps = calcYesEthProgressBps(yesValueWei);
-  const atMigrationGate = ethProgressBps >= MIGRATION.thresholdBps && yesRatioBps >= MIGRATION.thresholdBps;
+  const migrationBps = calcMigrationProgressBps(yesValueWei, noValueWei, yesRatioBps);
+  const atMigrationGate = migrationBps >= MIGRATION.thresholdBps;
   const totalPool = yesValueWei + noValueWei;
   const yesOdds = yesValueWei > 0n ? Number(totalPool) / Number(yesValueWei) : 1;
 

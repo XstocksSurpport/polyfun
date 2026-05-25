@@ -7,10 +7,10 @@ export { clientIp, escapeHtml, isAllowedImageMime, rateLimit, safeApiError, sani
 
 /** Standard rate-limit windows */
 export const RATE = {
-  markets: { limit: 120, windowMs: 60_000 },
-  marketsFresh: { limit: 8, windowMs: 60_000 },
-  trades: { limit: 90, windowMs: 60_000 },
-  metadata: { limit: 12, windowMs: 60_000 },
+  markets: { limit: 180, windowMs: 60_000 },
+  marketsFresh: { limit: 30, windowMs: 60_000 },
+  trades: { limit: 120, windowMs: 60_000 },
+  metadata: { limit: 30, windowMs: 60_000 },
   vanity: { limit: 6, windowMs: 60_000 },
   portfolio: { limit: 120, windowMs: 60_000 },
   platform: { limit: 60, windowMs: 60_000 },

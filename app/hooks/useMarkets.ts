@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { Market } from "@/lib/types";
-import { calcYesEthProgressBps } from "@/lib/protocol";
 
 function parseMarket(raw: Record<string, unknown>): Market {
   return {
@@ -35,20 +34,18 @@ export function useMarket(address: string, options?: { live?: boolean }) {
   return useQuery({
     queryKey: ["market", address],
     queryFn: async () => {
-      const fresh = live ? "&fresh=1" : "";
-      const res = await fetch(`/api/markets?address=${address}${fresh}`, { cache: "no-store" });
+      const res = await fetch(`/api/markets?address=${address}`, { cache: "no-store" });
       const data = await res.json();
       if (res.status === 404) return { market: null, error: "NOT_FOUND" };
       if (!res.ok) return { market: null, error: data.error ?? "LOAD_FAILED" };
       return { market: parseMarket(data.market), error: undefined };
     },
     enabled: Boolean(address),
+    placeholderData: (prev) => prev,
     refetchInterval: (query) => {
       const market = query.state.data?.market;
-      if (!market || market.status !== "active") return live ? 10_000 : 30_000;
-      const ethProgress = calcYesEthProgressBps(market.yesValueWei);
-      if (live || ethProgress >= 8500 || market.yesRatioBps >= 8500) return 4_000;
-      return 12_000;
+      if (!market || market.status !== "active") return live ? 15_000 : 30_000;
+      return live ? 12_000 : 30_000;
     },
     refetchOnWindowFocus: true,
   });

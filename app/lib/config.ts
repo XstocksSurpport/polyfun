@@ -20,13 +20,24 @@ export const rpcUrl =
 export const serverRpcUrl = process.env.RPC_URL ?? rpcUrl;
 
 export const contracts = {
-  launcher: process.env.NEXT_PUBLIC_LAUNCHER_ADDRESS as `0x${string}` | undefined,
-  registry: process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}` | undefined,
+  launcher:
+    (process.env.NEXT_PUBLIC_LAUNCHER_ADDRESS as `0x${string}` | undefined) ??
+    (CHAIN_ID === 8453 ? ("0xC5fc704de106aFa8E93D4B051966F83b4C1f197e" as const) : undefined),
+  registry:
+    (process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}` | undefined) ??
+    (CHAIN_ID === 8453 ? ("0x2579c1840671781F4AC353bc3aCf96a3dDB66C69" as const) : undefined),
   polyfun: process.env.NEXT_PUBLIC_POLYFUN_ADDRESS as `0x${string}` | undefined,
   genesisMarket: process.env.NEXT_PUBLIC_GENESIS_MARKET_ADDRESS as `0x${string}` | undefined,
-  platformMarket: process.env.NEXT_PUBLIC_PLATFORM_MARKET_ADDRESS as `0x${string}` | undefined,
-  platformToken: process.env.NEXT_PUBLIC_PLATFORM_TOKEN_ADDRESS as `0x${string}` | undefined,
-  launcherDeployBlock: BigInt(process.env.NEXT_PUBLIC_LAUNCHER_DEPLOY_BLOCK ?? "0"),
+  platformMarket:
+    (process.env.NEXT_PUBLIC_PLATFORM_MARKET_ADDRESS as `0x${string}` | undefined) ??
+    (CHAIN_ID === 8453 ? ("0x9f026ACD5784A4f975e3EFAf75F90cAbE29CB75e" as const) : undefined),
+  platformToken:
+    (process.env.NEXT_PUBLIC_PLATFORM_TOKEN_ADDRESS as `0x${string}` | undefined) ??
+    (CHAIN_ID === 8453 ? ("0xfC9C959a045225B7bA8882a0Be26901a82F2bA5e" as const) : undefined),
+  launcherDeployBlock: BigInt(
+    process.env.NEXT_PUBLIC_LAUNCHER_DEPLOY_BLOCK ??
+      (CHAIN_ID === 8453 ? "46441647" : "0")
+  ),
 };
 
 export const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;

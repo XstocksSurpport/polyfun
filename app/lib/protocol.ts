@@ -30,6 +30,12 @@ export function calcYesEthProgressBps(yesValueWei: bigint): number {
   return Number(bps > 10000n ? 10000n : bps);
 }
 
+/** Migration needs BOTH ≥90% YES ratio AND ≥4 ETH YES pool — progress is the lower of the two. */
+export function calcMigrationProgressBps(yesValueWei: bigint, noValueWei: bigint, yesRatioBps: number): number {
+  const ethBps = calcYesEthProgressBps(yesValueWei);
+  return Math.min(ethBps, yesRatioBps);
+}
+
 export function formatSupplyMillions(wei: bigint): string {
   return `${Number(wei / 10n ** 18n / 1_000_000n)}M`;
 }

@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { contracts, EXPLORER_URL } from "@/lib/config";
 import { useMarket, useMarketTrades } from "@/hooks/useMarkets";
-import { formatMarketProposition, canTradeMarket } from "@/lib/market-utils";
+import { formatMarketProposition, canTradeMarket, calcYesRatioBps } from "@/lib/market-utils";
 import { formatEth } from "@/lib/utils";
+import { calcMigrationProgressBps } from "@/lib/protocol";
 import { resolveMarketSocialLinks } from "@/lib/platform";
 import { PlatformVerifiedBadge } from "@/components/ui/PlatformVerifiedBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -61,28 +62,27 @@ export function PlatformMarketSection() {
     );
   }
 
-  if (error || !market) {
+  if (error && !market) {
     return (
       <section className="w-full max-w-3xl px-4 pb-16 pt-10">
         <div className="rounded-2xl border border-zinc-200/80 bg-white/90 p-6 text-center shadow-sm backdrop-blur-sm">
           <PlatformVerifiedBadge className="mb-3" />
           <h2 className="text-title text-lg">$poly · Polyfun</h2>
-          <p className="mt-2 text-sm text-zinc-500">
-            Platform market is being deployed. Run{" "}
-            <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-xs">npm run bootstrap:platform</code>{" "}
-            when the deploy wallet is funded.
-          </p>
-          <a
-            href={`${EXPLORER_URL}/address/${address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-block text-xs font-medium text-zinc-600 underline hover:text-zinc-900"
+          <p className="mt-2 text-sm text-zinc-500">Loading platform market…</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-3 text-xs font-medium text-zinc-600 underline hover:text-zinc-900"
           >
-            View address on Basescan
-          </a>
+            Retry
+          </button>
         </div>
       </section>
     );
+  }
+
+  if (!market) {
+    return null;
   }
 
   const title = formatMarketProposition(market.symbol);
@@ -90,6 +90,11 @@ export function PlatformMarketSection() {
   const canTrade = canTradeMarket(market);
   const trades = tradesData?.trades ?? [];
   const social = resolveMarketSocialLinks(market);
+  const migrationBps = calcMigrationProgressBps(
+    market.yesValueWei,
+    market.noValueWei,
+    calcYesRatioBps(market.yesValueWei, market.noValueWei)
+  );
 
   return (
     <>
@@ -126,8 +131,9 @@ export function PlatformMarketSection() {
                   <span aria-hidden className="mx-1.5">·</span>
                   YES{" "}
                   <span className="tabular-nums font-medium text-zinc-700">
-                    {(market.yesRatioBps / 100).toFixed(1)}%
+                    {(migrationBps / 100).toFixed(1)}%
                   </span>
+                  <span className="text-zinc-400"> migration</span>
                 </p>
               </div>
 
@@ -159,8 +165,8 @@ export function PlatformMarketSection() {
           <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
             <MarketLineChart
               trades={trades}
-              fallbackRatioBps={market.yesRatioBps}
-              live={market.status === "active"}
+              yesValueWei={market.yesValueWei}
+              noValueWei={market.noValueWei}
             />
 
             <div className="rounded-xl border border-zinc-100 bg-zinc-50/50 p-3 sm:p-4">

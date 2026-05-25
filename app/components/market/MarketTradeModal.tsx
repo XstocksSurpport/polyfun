@@ -113,8 +113,8 @@ export function MarketTradeModal({ market, side, onClose }: MarketTradeModalProp
         <div className="space-y-2.5 px-4 pb-4 sm:pb-4">
           <MarketLineChart
             trades={trades}
-            fallbackRatioBps={market.yesRatioBps}
-            live={market.status === "active"}
+            yesValueWei={market.yesValueWei}
+            noValueWei={market.noValueWei}
             compact
             className="border-zinc-100 shadow-none"
           />

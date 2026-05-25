@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import type { Trade } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { calcYesRatioBps } from "@/lib/market-utils";
+import { calcMigrationProgressBps, MIGRATION } from "@/lib/protocol";
 import {
   flatCandle,
   tradesToCandles,
@@ -12,10 +14,10 @@ import {
 
 interface MarketLineChartProps {
   trades?: Trade[];
-  fallbackRatioBps?: number;
+  yesValueWei?: bigint;
+  noValueWei?: bigint;
   className?: string;
   compact?: boolean;
-  live?: boolean;
 }
 
 function renderCandles(
@@ -84,19 +86,25 @@ function renderCandles(
 
 export function MarketLineChart({
   trades = [],
-  fallbackRatioBps = 5000,
+  yesValueWei = 0n,
+  noValueWei = 0n,
   className,
   compact = false,
-  live: _live = false,
 }: MarketLineChartProps) {
   const [timeframe, setTimeframe] = useState<ChartTimeframe>("24h");
 
+  const migrationBps = calcMigrationProgressBps(
+    yesValueWei,
+    noValueWei,
+    calcYesRatioBps(yesValueWei, noValueWei)
+  );
+
   const candles = useMemo(() => {
     if (trades.length === 0) {
-      return flatCandle(fallbackRatioBps, timeframe);
+      return flatCandle(yesValueWei, noValueWei, timeframe);
     }
-    return tradesToCandles(trades, timeframe, fallbackRatioBps);
-  }, [trades, timeframe, fallbackRatioBps]);
+    return tradesToCandles(trades, timeframe, yesValueWei, noValueWei);
+  }, [trades, timeframe, yesValueWei, noValueWei]);
 
   const width = 320;
   const height = compact ? 88 : 132;
@@ -106,17 +114,17 @@ export function MarketLineChart({
   const { elements, last, delta, minP, maxP, yFor, padX: px, chartW, chartH, padY: py } =
     renderCandles(candles, width, height, padX, padY);
 
-  const thresholdY = yFor(90);
+  const thresholdY = yFor(MIGRATION.thresholdBps / 100);
 
   return (
     <div className={cn("rounded-xl border border-zinc-100 bg-white", compact ? "p-2" : "p-3", className)}>
       <div className={cn("flex items-center justify-between gap-2", compact ? "mb-1" : "mb-2")}>
         <div className="flex min-w-0 items-baseline gap-2">
           {!compact && (
-            <p className="text-eyebrow tracking-wider text-zinc-400">YES %</p>
+            <p className="text-eyebrow tracking-wider text-zinc-400">Migration</p>
           )}
           <p className={cn("font-semibold tabular-nums text-zinc-950", compact ? "text-sm" : "text-base")}>
-            {last?.c.toFixed(1) ?? (fallbackRatioBps / 100).toFixed(1)}%
+            {last?.c.toFixed(1) ?? (migrationBps / 100).toFixed(1)}%
           </p>
           <p className={cn("tabular-nums text-zinc-400", compact ? "text-[10px]" : "text-[11px]")}>
             {delta >= 0 ? "+" : ""}
@@ -145,7 +153,7 @@ export function MarketLineChart({
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className={cn("w-full", compact ? "h-[5.5rem]" : "h-[8.25rem]")}
-        aria-label="YES ratio candlestick chart"
+        aria-label="Migration progress candlestick chart"
       >
         {[0.25, 0.5, 0.75].map((f) => {
           const y = py + chartH * f;
@@ -179,12 +187,6 @@ export function MarketLineChart({
           </>
         ) : null}
       </svg>
-
-      {trades.length === 0 ? (
-        <p className={cn("text-center text-zinc-400", compact ? "mt-0.5 text-[10px]" : "mt-1 text-xs")}>
-          Waiting for first trade…
-        </p>
-      ) : null}
     </div>
   );
 }

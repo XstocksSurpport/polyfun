@@ -7,6 +7,7 @@ import {
   guardRateLimit,
   isAllowedImageMime,
   RATE,
+  safeApiError,
   sanitizeSocialUrl,
   sanitizeText,
 } from "@/lib/server/api-guard";
@@ -106,15 +107,6 @@ async function pinJsonToPinata(metadata: TokenMetadata, pinataJwt: string) {
   };
 }
 
-function saveLocal(metadata: TokenMetadata, metadataHash: `0x${string}`, warning?: string) {
-  saveMetadataByHash(metadataHash, { ...metadata });
-  return NextResponse.json({
-    metadataHash,
-    devLocal: true,
-    warning: warning ?? "Metadata saved locally for this server session",
-  });
-}
-
 export async function POST(request: Request) {
   const limited = guardRateLimit(request, "metadata", RATE.metadata.limit, RATE.metadata.windowMs);
   if (limited) return limited;
@@ -197,12 +189,21 @@ export async function POST(request: Request) {
           ipfsHash: pinned.ipfsHash,
           uri: pinned.uri,
         });
-      } catch {
-        return saveLocal(metadata, metadataHash, "Pinata timed out — metadata saved locally; launch can continue");
+      } catch (pinataErr) {
+        saveMetadataByHash(metadataHash, metadata);
+        return NextResponse.json({
+          metadataHash,
+          warning: "Pinata unavailable — using on-chain metadata hash only",
+          detail: safeApiError(pinataErr),
+        });
       }
     }
 
-    return saveLocal(metadata, metadataHash, "PINATA_JWT_MISSING — metadata saved locally for this server only");
+    saveMetadataByHash(metadataHash, metadata);
+    return NextResponse.json({
+      metadataHash,
+      warning: "PINATA_JWT_MISSING — metadata hash ready for launch",
+    });
   } catch (error) {
     return apiErrorResponse(error, 500);
   }

@@ -1,5 +1,6 @@
 import type { Trade } from "@/lib/types";
-import { weiToEth } from "@/lib/market-utils";
+import { calcYesRatioBps } from "@/lib/market-utils";
+import { calcMigrationProgressBps } from "@/lib/protocol";
 
 export type ChartTimeframe = "1h" | "4h" | "24h";
 
@@ -24,16 +25,28 @@ const BUCKET_COUNTS: Record<ChartTimeframe, number> = {
   "24h": 48,
 };
 
-function ratioAt(yesVol: number, noVol: number, fallbackRatioBps: number): number {
-  const total = yesVol + noVol;
-  return total > 0 ? (yesVol / total) * 100 : fallbackRatioBps / 100;
+function migrationPercent(yesValueWei: bigint, noValueWei: bigint): number {
+  const ratioBps = calcYesRatioBps(yesValueWei, noValueWei);
+  return calcMigrationProgressBps(yesValueWei, noValueWei, ratioBps) / 100;
 }
 
-/** Build OHLC candles from on-chain YES/NO trades (YES share %). */
+/** Derive pool state before the first trade in `sorted` given current on-chain totals. */
+function baselineFromTrades(sorted: Trade[], currentYesWei: bigint, currentNoWei: bigint) {
+  let yes = currentYesWei;
+  let no = currentNoWei;
+  for (const t of sorted) {
+    if (t.side === "yes") yes -= t.shares;
+    else no -= t.shares;
+  }
+  return { yes: yes > 0n ? yes : 0n, no: no > 0n ? no : 0n };
+}
+
+/** Build OHLC candles — migration progress = min(YES ratio, YES ETH toward 4 ETH). */
 export function tradesToCandles(
   trades: Trade[],
   timeframe: ChartTimeframe,
-  fallbackRatioBps: number
+  currentYesWei: bigint,
+  currentNoWei: bigint
 ): Candle[] {
   const now = Math.floor(Date.now() / 1000);
   const windowSec = WINDOWS[timeframe];
@@ -42,13 +55,15 @@ export function tradesToCandles(
   const start = now - windowSec;
 
   const sorted = [...trades].sort((a, b) => a.timestamp - b.timestamp);
+  const baseline = baselineFromTrades(sorted, currentYesWei, currentNoWei);
 
-  let yesVol = 0;
-  let noVol = 0;
+  let yesValueWei = baseline.yes;
+  let noValueWei = baseline.no;
+
   for (const t of sorted) {
     if (t.timestamp >= start) break;
-    if (t.side === "yes") yesVol += weiToEth(t.amountWei);
-    else noVol += weiToEth(t.amountWei);
+    if (t.side === "yes") yesValueWei += t.shares;
+    else noValueWei += t.shares;
   }
 
   let cursor = start;
@@ -56,7 +71,7 @@ export function tradesToCandles(
 
   for (let i = 0; i < bucketCount; i++) {
     const bucketEnd = cursor + bucketSec;
-    const open = ratioAt(yesVol, noVol, fallbackRatioBps);
+    const open = migrationPercent(yesValueWei, noValueWei);
     let high = open;
     let low = open;
     let close = open;
@@ -64,11 +79,10 @@ export function tradesToCandles(
 
     for (const t of sorted) {
       if (t.timestamp < cursor || t.timestamp >= bucketEnd) continue;
-      const amt = weiToEth(t.amountWei);
-      if (t.side === "yes") yesVol += amt;
-      else noVol += amt;
-      volume += amt;
-      close = ratioAt(yesVol, noVol, fallbackRatioBps);
+      if (t.side === "yes") yesValueWei += t.shares;
+      else noValueWei += t.shares;
+      volume += Number(t.shares) / 1e18;
+      close = migrationPercent(yesValueWei, noValueWei);
       high = Math.max(high, close);
       low = Math.min(low, close);
     }
@@ -80,15 +94,23 @@ export function tradesToCandles(
   return candles;
 }
 
-/** Single flat candle when the market has no trades yet. */
-export function flatCandle(ratioBps: number, timeframe: ChartTimeframe): Candle[] {
+export function flatCandle(
+  yesValueWei: bigint,
+  noValueWei: bigint,
+  timeframe: ChartTimeframe
+): Candle[] {
+  const v = migrationPercent(yesValueWei, noValueWei);
   const now = Math.floor(Date.now() / 1000);
-  const v = ratioBps / 100;
-  const candles = tradesToCandles([], timeframe, ratioBps);
-  if (candles.length === 0) {
-    return [{ t: now - WINDOWS[timeframe], o: v, h: v, l: v, c: v, volume: 0 }];
-  }
-  return candles.map((c, i) =>
-    i === candles.length - 1 ? { ...c, o: v, h: v, l: v, c: v } : c
-  );
+  const bucketCount = BUCKET_COUNTS[timeframe];
+  const bucketSec = WINDOWS[timeframe] / bucketCount;
+  const start = now - WINDOWS[timeframe];
+
+  return Array.from({ length: bucketCount }, (_, i) => ({
+    t: start + i * bucketSec,
+    o: v,
+    h: v,
+    l: v,
+    c: v,
+    volume: 0,
+  }));
 }

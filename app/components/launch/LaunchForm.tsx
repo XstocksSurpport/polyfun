@@ -37,6 +37,9 @@ function formatLaunchError(error: unknown): string {
     if (msg.includes("DeployFee")) {
       return "Incorrect deploy fee amount";
     }
+    if (/METADATA|PINATA|NAME_SYMBOL|IMAGE_|RATE_LIMITED/i.test(msg)) {
+      return msg.length > 120 ? `${msg.slice(0, 120)}…` : msg;
+    }
     if (/Reentrancy|estimateGas|CALL_EXCEPTION/i.test(msg)) {
       return "Launch simulation failed — check fee and try again";
     }
