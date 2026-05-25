@@ -215,15 +215,6 @@ export function LaunchForm() {
         burnPolyfun,
       };
 
-      await getLaunchPublicClient().simulateContract({
-        address: contracts.launcher,
-        abi: launcherAbi,
-        functionName: "createLaunch",
-        args: [params, launchSalt as `0x${string}`],
-        account: address as `0x${string}`,
-        value: fee,
-      });
-
       const contract = getContract(contracts.launcher, launcherAbi, activeSigner);
       const tx = await withTimeout(
         contract.createLaunch(params, launchSalt, { value: fee }),

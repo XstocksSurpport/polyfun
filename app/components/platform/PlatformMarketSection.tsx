@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { contracts, EXPLORER_URL } from "@/lib/config";
 import { useMarket, useMarketTrades } from "@/hooks/useMarkets";
+import { useLivePool } from "@/hooks/useLivePool";
 import { formatMarketProposition, canTradeMarket, calcYesRatioBps } from "@/lib/market-utils";
-import { formatEth } from "@/lib/utils";
+import { formatEthVol, formatMigrationPercent } from "@/lib/utils";
 import { calcMigrationProgressBps } from "@/lib/protocol";
 import { resolveMarketSocialLinks } from "@/lib/platform";
 import { PlatformVerifiedBadge } from "@/components/ui/PlatformVerifiedBadge";
@@ -25,6 +26,10 @@ export function PlatformMarketSection() {
   const { data: tradesData } = useMarketTrades(address ?? "", {
     live: marketStatus === "active",
   });
+  const { pool: livePool, refetch: refetchPool } = useLivePool(
+    address,
+    marketStatus === "active" || !marketStatus
+  );
   const [modalSide, setModalSide] = useState<"yes" | "no" | null>(null);
 
   if (!address) {
@@ -86,15 +91,22 @@ export function PlatformMarketSection() {
   }
 
   const title = formatMarketProposition(market.symbol);
-  const totalPool = market.yesValueWei + market.noValueWei;
+  const yesValueWei = livePool?.yesValueWei ?? market.yesValueWei;
+  const noValueWei = livePool?.noValueWei ?? market.noValueWei;
+  const totalPool = yesValueWei + noValueWei;
   const canTrade = canTradeMarket(market);
   const trades = tradesData?.trades ?? [];
   const social = resolveMarketSocialLinks(market);
   const migrationBps = calcMigrationProgressBps(
-    market.yesValueWei,
-    market.noValueWei,
-    calcYesRatioBps(market.yesValueWei, market.noValueWei)
+    yesValueWei,
+    noValueWei,
+    calcYesRatioBps(yesValueWei, noValueWei)
   );
+
+  const handleTradeSuccess = () => {
+    void refetchPool();
+    void fetch(`/api/markets?address=${market.address}&fresh=1`, { cache: "no-store" });
+  };
 
   return (
     <>
@@ -127,11 +139,11 @@ export function PlatformMarketSection() {
                 </div>
                 <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">{title}</p>
                 <p className="mt-2 text-meta">
-                  Vol <span className="tabular-nums font-medium text-zinc-700">{formatEth(totalPool, 2)}</span>
+                  Vol <span className="tabular-nums font-medium text-zinc-700">{formatEthVol(totalPool)}</span>
                   <span aria-hidden className="mx-1.5">·</span>
                   YES{" "}
                   <span className="tabular-nums font-medium text-zinc-700">
-                    {(migrationBps / 100).toFixed(1)}%
+                    {formatMigrationPercent(migrationBps)}
                   </span>
                   <span className="text-zinc-400"> migration</span>
                 </p>
@@ -165,15 +177,22 @@ export function PlatformMarketSection() {
           <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
             <MarketLineChart
               trades={trades}
-              yesValueWei={market.yesValueWei}
-              noValueWei={market.noValueWei}
+              yesValueWei={yesValueWei}
+              noValueWei={noValueWei}
             />
 
             <div className="rounded-xl border border-zinc-100 bg-zinc-50/50 p-3 sm:p-4">
               <p className="text-eyebrow mb-3 tracking-wider text-zinc-400">
                 Trade
               </p>
-              <YesNoTrade market={market} initialSide="yes" compact />
+              <YesNoTrade
+                market={market}
+                initialSide="yes"
+                compact
+                yesValueWei={yesValueWei}
+                noValueWei={noValueWei}
+                onTradeSuccess={handleTradeSuccess}
+              />
             </div>
           </div>
 
@@ -197,7 +216,12 @@ export function PlatformMarketSection() {
       </section>
 
       {modalSide ? (
-        <MarketTradeModal market={market} side={modalSide} onClose={() => setModalSide(null)} />
+        <MarketTradeModal
+          market={{ ...market, yesValueWei, noValueWei, yesRatioBps: calcYesRatioBps(yesValueWei, noValueWei) }}
+          side={modalSide}
+          onClose={() => setModalSide(null)}
+          onTradeSuccess={handleTradeSuccess}
+        />
       ) : null}
     </>
   );

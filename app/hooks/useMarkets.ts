@@ -70,7 +70,7 @@ export function useMarketTrades(address: string, options?: { live?: boolean }) {
       };
     },
     enabled: Boolean(address),
-    refetchInterval: live ? 5_000 : 30_000,
+    refetchInterval: live ? 3_000 : 30_000,
     refetchOnWindowFocus: live,
   });
 }

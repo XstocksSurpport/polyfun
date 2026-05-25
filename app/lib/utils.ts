@@ -15,6 +15,24 @@ export function formatEthAmount(value: number | bigint, digits = 4) {
   return num.toFixed(digits);
 }
 
+/** Volume label — extra precision for small pools. */
+export function formatEthVol(value: number | bigint): string {
+  const num = typeof value === "bigint" ? Number(value) / 1e18 : value;
+  if (num === 0) return "0 ETH";
+  if (num < 0.0001) return `${num.toFixed(8)} ETH`;
+  if (num < 0.01) return `${num.toFixed(6)} ETH`;
+  if (num < 1) return `${num.toFixed(4)} ETH`;
+  return `${num.toFixed(2)} ETH`;
+}
+
+/** Migration % — more decimals when progress is tiny. */
+export function formatMigrationPercent(bps: number): string {
+  const pct = bps / 100;
+  if (pct > 0 && pct < 0.1) return `${pct.toFixed(3)}%`;
+  if (pct < 1) return `${pct.toFixed(2)}%`;
+  return `${pct.toFixed(1)}%`;
+}
+
 export function formatPercent(bps: number) {
   return `${(bps / 100).toFixed(1)}%`;
 }

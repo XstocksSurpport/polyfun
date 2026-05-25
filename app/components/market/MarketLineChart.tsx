@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Trade } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatMigrationPercent } from "@/lib/utils";
 import { calcYesRatioBps } from "@/lib/market-utils";
 import { calcMigrationProgressBps, MIGRATION } from "@/lib/protocol";
 import {
@@ -124,11 +124,12 @@ export function MarketLineChart({
             <p className="text-eyebrow tracking-wider text-zinc-400">Migration</p>
           )}
           <p className={cn("font-semibold tabular-nums text-zinc-950", compact ? "text-sm" : "text-base")}>
-            {last?.c.toFixed(1) ?? (migrationBps / 100).toFixed(1)}%
+            {formatMigrationPercent(last ? Math.round(last.c * 100) : migrationBps)}
           </p>
           <p className={cn("tabular-nums text-zinc-400", compact ? "text-[10px]" : "text-[11px]")}>
-            {delta >= 0 ? "+" : ""}
-            {delta.toFixed(2)}%
+            {delta === 0
+              ? "+0.00%"
+              : `${delta > 0 ? "+" : "-"}${formatMigrationPercent(Math.round(Math.abs(delta) * 100))}`}
           </p>
         </div>
         <div className="flex shrink-0 gap-0.5 rounded-md border border-zinc-200/60 bg-zinc-50 p-0.5">

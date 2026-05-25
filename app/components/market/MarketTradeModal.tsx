@@ -10,6 +10,7 @@ import { Countdown } from "./Countdown";
 import { formatMarketProposition } from "@/lib/market-utils";
 import { isPlatformMarket, resolveMarketSocialLinks } from "@/lib/platform";
 import { useMarketTrades } from "@/hooks/useMarkets";
+import { useLivePool } from "@/hooks/useLivePool";
 import { MarketLineChart } from "./MarketLineChart";
 import { YesNoTrade } from "./YesNoTrade";
 import { PlatformVerifiedBadge } from "@/components/ui/PlatformVerifiedBadge";
@@ -18,10 +19,17 @@ interface MarketTradeModalProps {
   market: Market;
   side: "yes" | "no";
   onClose: () => void;
+  onTradeSuccess?: () => void;
 }
 
-export function MarketTradeModal({ market, side, onClose }: MarketTradeModalProps) {
+export function MarketTradeModal({ market, side, onClose, onTradeSuccess }: MarketTradeModalProps) {
   const [mounted, setMounted] = useState(false);
+  const { pool: livePool, refetch: refetchPool } = useLivePool(
+    market.address,
+    market.status === "active"
+  );
+  const yesValueWei = livePool?.yesValueWei ?? market.yesValueWei;
+  const noValueWei = livePool?.noValueWei ?? market.noValueWei;
   const { data: tradesData } = useMarketTrades(market.address, {
     live: market.status === "active",
   });
@@ -113,13 +121,23 @@ export function MarketTradeModal({ market, side, onClose }: MarketTradeModalProp
         <div className="space-y-2.5 px-4 pb-4 sm:pb-4">
           <MarketLineChart
             trades={trades}
-            yesValueWei={market.yesValueWei}
-            noValueWei={market.noValueWei}
+            yesValueWei={yesValueWei}
+            noValueWei={noValueWei}
             compact
             className="border-zinc-100 shadow-none"
           />
 
-          <YesNoTrade market={market} initialSide={side} compact />
+          <YesNoTrade
+            market={market}
+            initialSide={side}
+            compact
+            yesValueWei={yesValueWei}
+            noValueWei={noValueWei}
+            onTradeSuccess={() => {
+              void refetchPool();
+              onTradeSuccess?.();
+            }}
+          />
         </div>
       </div>
     </div>,
