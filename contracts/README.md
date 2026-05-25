@@ -23,10 +23,20 @@ npm run deploy:sepolia
 Or manually:
 
 ```bash
+export BASESCAN_API_KEY=YourEtherscanApiKey
+npm run verify:base-mainnet
+```
+
+Initial deploy:
+
+```bash
 forge script script/Deploy.s.sol:DeployPolyfun \
-  --rpc-url $BASE_SEPOLIA_RPC_URL \
+  --rpc-url $BASE_RPC_URL \
   --broadcast \
-  --verify --etherscan-api-key $BASESCAN_API_KEY
+  --verify \
+  --verifier etherscan \
+  --verifier-url "https://api.etherscan.io/v2/api?chainid=8453" \
+  --etherscan-api-key $BASESCAN_API_KEY
 ```
 
 Addresses are written to `../deployments/base-sepolia.json` and synced into `app/.env.local`.
