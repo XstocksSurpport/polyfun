@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Market } from "@/lib/types";
-import { formatEth, formatEthAmount, cn } from "@/lib/utils";
+import { formatEth, cn } from "@/lib/utils";
 import { ethToWei, canTradeMarket } from "@/lib/market-utils";
 import { EXPLORER_URL } from "@/lib/config";
-import { MIGRATION, calcYesEthProgressBps, FEES } from "@/lib/protocol";
+import { MIGRATION, calcYesEthProgressBps } from "@/lib/protocol";
 import { marketAbi } from "@/lib/abis";
 import { getContract } from "@/lib/ethers/contract";
-import { readLivePoolState, readTradeQuote, type TradeQuote } from "@/lib/client/market-read";
+import { readLivePoolState, readTradeQuote } from "@/lib/client/market-read";
 import { formatTradeError, minSharesWithSlippage } from "@/lib/trade-errors";
 import { useWallet } from "@/providers/WalletProvider";
 import { withTimeout } from "@/lib/async";
@@ -41,7 +41,6 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
   const [pending, setPending] = useState(false);
   const [txError, setTxError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [quote, setQuote] = useState<TradeQuote | null>(null);
   const [livePool, setLivePool] = useState<{ yesValueWei: bigint; noValueWei: bigint; yesRatioBps: number } | null>(
     null
   );
@@ -52,7 +51,6 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
     noClaimed: boolean;
   } | null>(null);
   const [claimRefresh, setClaimRefresh] = useState(0);
-  const willTrigger = quote?.willTrigger === true;
   const tradeable = canTradeMarket(market);
 
   const yesValueWei = livePool?.yesValueWei ?? market.yesValueWei;
@@ -130,7 +128,6 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
   const amountWei = ethToWei(amount);
   const ethProgressBps = calcYesEthProgressBps(yesValueWei);
   const atMigrationGate = ethProgressBps >= MIGRATION.thresholdBps && yesRatioBps >= MIGRATION.thresholdBps;
-  const inMigrationZone = ethProgressBps >= 8500 || yesRatioBps >= 8500;
   const totalPool = yesValueWei + noValueWei;
   const yesOdds = yesValueWei > 0n ? Number(totalPool) / Number(yesValueWei) : 1;
 
@@ -150,22 +147,6 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
     const id = window.setInterval(() => void refreshLivePool(), 4_000);
     return () => window.clearInterval(id);
   }, [refreshLivePool, tradeable]);
-
-  const loadQuote = useCallback(async () => {
-    if (amountWei === 0n || !tradeable) {
-      setQuote(null);
-      return;
-    }
-    const q = await readTradeQuote(market.address as `0x${string}`, side, amountWei);
-    setQuote(q);
-  }, [market.address, tradeable, amountWei, side]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadQuote();
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [loadQuote]);
 
   const handleTrade = async (tradeSide: "yes" | "no") => {
     if (!address) return;
@@ -202,7 +183,6 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
       setTxHash((receipt as { hash?: string } | null)?.hash ?? tx.hash);
       void fetch(`/api/markets?address=${market.address}&fresh=1`, { cache: "no-store" });
       void refreshLivePool();
-      void loadQuote();
       void queryClient.invalidateQueries({ queryKey: ["trades", market.address] });
       void queryClient.invalidateQueries({ queryKey: ["market", market.address] });
       void queryClient.invalidateQueries({ queryKey: ["markets"] });
@@ -279,17 +259,11 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
     );
   }
 
-  const noBlocked = atMigrationGate && !willTrigger;
+  const noBlocked = atMigrationGate;
   const amountLabel = formatEth(amount);
 
   return (
     <div className={cn(compact ? "space-y-2" : "space-y-5")}>
-      {inMigrationZone && (
-        <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-2.5 py-1.5 text-[10px] text-amber-800">
-          {atMigrationGate ? "Migration threshold reached" : "Near migration zone"}
-        </p>
-      )}
-
       {!compact && (
         <div className="grid grid-cols-2 gap-3 text-center">
           <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 px-3 py-3">
@@ -357,35 +331,6 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
           </div>
         </div>
       </div>
-
-      {quote && (
-        <div className="space-y-1 text-[10px] leading-relaxed text-zinc-500">
-          <p>
-            You pay {formatEthAmount(amountWei, 4)} ETH → {formatEthAmount(quote.netEthWei, 4)} ETH enters
-            pool (fee {FEES.tradingBps / 100}% · {formatEthAmount(quote.feeWei, 5)} ETH)
-          </p>
-          <p>
-            You receive ~{formatEthAmount(quote.sharesOut, 4)} {side === "yes" ? "YES" : "NO"} shares
-            (1 share = 1 wei net ETH in the bonding curve)
-          </p>
-          <p>
-            Pool now · YES {formatEthAmount(yesValueWei, 4)} · NO {formatEthAmount(noValueWei, 4)}
-            {noValueWei === 0n ? (
-              yesValueWei === 0n ? (
-                <> · empty market until first trade</>
-              ) : (
-                <> · no NO buyers yet — YES weight stays 100%</>
-              )
-            ) : (
-              <>
-                {" "}
-                · YES odds {(yesRatioBps / 100).toFixed(1)}% → {(quote.newYesRatioBps / 100).toFixed(1)}%
-              </>
-            )}
-            {willTrigger && side === "yes" ? " · triggers migration" : ""}
-          </p>
-        </div>
-      )}
 
       {txError && <p className="text-xs text-red-600">{txError}</p>}
       {txHash && (
