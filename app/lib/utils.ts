@@ -6,8 +6,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatEth(value: number | bigint, digits = 4) {
+  return `${formatEthAmount(value, digits)} ETH`;
+}
+
+/** ETH amount without the trailing unit (for custom labels). */
+export function formatEthAmount(value: number | bigint, digits = 4) {
   const num = typeof value === "bigint" ? Number(value) / 1e18 : value;
-  return `${num.toFixed(digits)} ETH`;
+  return num.toFixed(digits);
 }
 
 export function formatPercent(bps: number) {

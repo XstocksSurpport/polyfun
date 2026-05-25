@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Market } from "@/lib/types";
-import { formatEth, cn } from "@/lib/utils";
+import { formatEth, formatEthAmount, cn } from "@/lib/utils";
 import { ethToWei, canTradeMarket } from "@/lib/market-utils";
 import { EXPLORER_URL } from "@/lib/config";
 import { MIGRATION, calcYesEthProgressBps, FEES } from "@/lib/protocol";
@@ -359,14 +359,29 @@ export function YesNoTrade({ market, initialSide = "yes", compact = false }: Yes
       </div>
 
       {quote && (
-        <div className="space-y-0.5 text-[10px] leading-relaxed text-zinc-500">
+        <div className="space-y-1 text-[10px] leading-relaxed text-zinc-500">
           <p>
-            Net pool · {formatEth(quote.netEthWei, 4)} ETH (fee {FEES.tradingBps / 100}% ·{" "}
-            {formatEth(quote.feeWei, 5)} ETH)
+            You pay {formatEthAmount(amountWei, 4)} ETH → {formatEthAmount(quote.netEthWei, 4)} ETH enters
+            pool (fee {FEES.tradingBps / 100}% · {formatEthAmount(quote.feeWei, 5)} ETH)
           </p>
           <p>
-            {side === "yes" ? "Yes" : "No"} shares ≈ {formatEth(quote.sharesOut, 4)} · YES{" "}
-            {(yesRatioBps / 100).toFixed(1)}% → {(quote.newYesRatioBps / 100).toFixed(1)}%
+            You receive ~{formatEthAmount(quote.sharesOut, 4)} {side === "yes" ? "YES" : "NO"} shares
+            (1 share = 1 wei net ETH in the bonding curve)
+          </p>
+          <p>
+            Pool now · YES {formatEthAmount(yesValueWei, 4)} · NO {formatEthAmount(noValueWei, 4)}
+            {noValueWei === 0n ? (
+              yesValueWei === 0n ? (
+                <> · empty market until first trade</>
+              ) : (
+                <> · no NO buyers yet — YES weight stays 100%</>
+              )
+            ) : (
+              <>
+                {" "}
+                · YES odds {(yesRatioBps / 100).toFixed(1)}% → {(quote.newYesRatioBps / 100).toFixed(1)}%
+              </>
+            )}
             {willTrigger && side === "yes" ? " · triggers migration" : ""}
           </p>
         </div>
