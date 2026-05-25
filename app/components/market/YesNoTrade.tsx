@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Market } from "@/lib/types";
 import { formatEth, formatEthVol, formatMigrationPercent, cn } from "@/lib/utils";
 import { ethToWei, canTradeMarket } from "@/lib/market-utils";
-import { EXPLORER_URL, CHAIN_ID } from "@/lib/config";
+import { EXPLORER_URL } from "@/lib/config";
 import { MIGRATION, calcMigrationProgressBps } from "@/lib/protocol";
 import { marketAbi } from "@/lib/abis";
 import { getContract } from "@/lib/ethers/contract";
@@ -17,8 +17,6 @@ import { buttonClassName } from "@/components/ui/Button";
 import { ConnectButton } from "@/components/layout/ConnectButton";
 import { ClaimActions } from "@/components/portfolio/ClaimActions";
 
-/** Base L2 typical tx gas — keep reserve small so micro trades stay clickable. */
-const GAS_RESERVE_ETH = 0.00003;
 const BALANCE_PRESETS = [
   { label: "25%", ratio: 0.25 },
   { label: "50%", ratio: 0.5 },
@@ -43,7 +41,7 @@ export function YesNoTrade({
   noValueWei: noValueProp,
   onTradeSuccess,
 }: YesNoTradeProps) {
-  const { address, chainId, signer, getSigner } = useWallet();
+  const { address, signer, getSigner } = useWallet();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState(0.01);
   const [ethBalanceWei, setEthBalanceWei] = useState<bigint | null>(null);
@@ -131,8 +129,7 @@ export function YesNoTrade({
 
   const applyBalancePreset = (ratio: number, label: string) => {
     if (ethBalance === null || ethBalance <= 0) return;
-    const value =
-      ratio >= 1 ? Math.max(0, ethBalance - GAS_RESERVE_ETH) : ethBalance * ratio;
+    const value = ratio >= 1 ? ethBalance : ethBalance * ratio;
     setAmount(parseFloat(value.toFixed(6)));
     setActivePreset(label);
   };
@@ -143,33 +140,10 @@ export function YesNoTrade({
   const totalPool = yesValueWei + noValueWei;
   const yesOdds = yesValueWei > 0n ? Number(totalPool) / Number(yesValueWei) : 1;
 
-  const wrongNetwork = chainId !== null && chainId !== CHAIN_ID;
-  const gasReserveWei = BigInt(Math.round(GAS_RESERVE_ETH * 1e18));
-  const cannotAffordTrade =
-    ethBalanceWei !== null && amountWei > 0n && ethBalanceWei < amountWei;
-  const tightOnGas =
-    ethBalanceWei !== null &&
-    amountWei > 0n &&
-    !cannotAffordTrade &&
-    ethBalanceWei < amountWei + gasReserveWei;
-  const tradeBlocked = wrongNetwork || cannotAffordTrade || amountWei === 0n;
-
   const handleTrade = async (tradeSide: "yes" | "no") => {
     if (!address) return;
     if (amountWei <= 0n) {
       setTxError("Enter an amount greater than 0");
-      return;
-    }
-    if (wrongNetwork) {
-      setTxError("Switch your wallet to Base network");
-      return;
-    }
-    if (cannotAffordTrade) {
-      setTxError("Insufficient ETH for this trade amount");
-      return;
-    }
-    if (ethBalanceWei !== null && ethBalanceWei < amountWei + gasReserveWei) {
-      setTxError("Low balance — leave a little ETH for gas or reduce amount");
       return;
     }
 
@@ -354,15 +328,6 @@ export function YesNoTrade({
 
       {quoteWarning ? <p className="text-xs text-amber-700">{quoteWarning}</p> : null}
       {txError && <p className="text-xs text-red-600">{txError}</p>}
-      {wrongNetwork ? (
-        <p className="text-xs text-amber-700">Switch wallet to Base to trade.</p>
-      ) : null}
-      {tightOnGas ? (
-        <p className="text-xs text-amber-700">Balance is tight — reduce amount if the tx fails.</p>
-      ) : null}
-      {cannotAffordTrade ? (
-        <p className="text-xs text-red-600">Insufficient ETH for this trade amount.</p>
-      ) : null}
       {txHash && (
         <a
           className="block text-xs font-medium text-zinc-950 underline"
@@ -377,7 +342,7 @@ export function YesNoTrade({
       <div className="grid grid-cols-2 gap-1.5">
         <button
           type="button"
-          disabled={pending || tradeBlocked}
+          disabled={pending}
           onClick={() => handleTrade("yes")}
           className={cn(
             "flex w-full items-center justify-center rounded-lg bg-zinc-950 text-sm font-semibold text-white shadow-sm transition-all hover:bg-zinc-900 disabled:opacity-40",
@@ -397,7 +362,7 @@ export function YesNoTrade({
         </button>
         <button
           type="button"
-          disabled={pending || tradeBlocked || noBlocked}
+          disabled={pending || noBlocked}
           onClick={() => handleTrade("no")}
           className={cn(
             "flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-zinc-800 shadow-sm transition-all hover:bg-zinc-50 disabled:opacity-40",
